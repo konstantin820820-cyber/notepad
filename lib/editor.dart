@@ -40,84 +40,80 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Обертка QuillProvider связывает панель инструментов и поле ввода, оживляя все кнопки
-    return quill.QuillProvider(
-      configurations: quill.QuillConfigurations(
-        controller: _quillController!,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.id == null ? 'Новая заметка' : 'Редактирование'),
+        actions: [
+          DropdownButton<String>(
+            value: _selectedCategory,
+            underline: const SizedBox(),
+            items: widget.categories.where((cat) => cat != 'Все').map((String value) {
+              return DropdownMenuItem<String>(value: value, child: Text(value));
+            }).toList(),
+            onChanged: (newValue) {
+              if (newValue != null) setState(() { _selectedCategory = newValue; });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: () {
+              final contentJson = jsonEncode(_quillController!.document.toDelta().toJson());
+              Navigator.pop(context, {
+                'title': _titleController.text,
+                'contentDelta': contentJson,
+                'category': _selectedCategory,
+              });
+            },
+          )
+        ],
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.id == null ? 'Новая заметка' : 'Редактирование'),
-          actions: [
-            DropdownButton<String>(
-              value: _selectedCategory,
-              underline: const SizedBox(),
-              items: widget.categories.where((cat) => cat != 'Все').map((String value) {
-                return DropdownMenuItem<String>(value: value, child: Text(value));
-              }).toList(),
-              onChanged: (newValue) {
-                if (newValue != null) setState(() { _selectedCategory = newValue; });
-              },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: TextField(
+              controller: _titleController,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
             ),
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: () {
-                final contentJson = jsonEncode(_quillController!.document.toDelta().toJson());
-                Navigator.pop(context, {
-                  'title': _titleController.text,
-                  'contentDelta': contentJson,
-                  'category': _selectedCategory,
-                });
-              },
-            )
-          ],
-        ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: TextField(
-                controller: _titleController,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: quill.QuillEditor.basic(
-                  config: const quill.QuillEditorConfig(
-                    placeholder: 'Текст заметки...',
-                    autoFocus: true,
-                  ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: quill.QuillEditor.basic(
+                controller: _quillController!,
+                config: const quill.QuillEditorConfig(
+                  placeholder: 'Текст заметки...',
+                  autoFocus: true,
                 ),
               ),
             ),
-            // Облегченная панель инструментов Xiaomi над клавиатурой
-            const quill.QuillSimpleToolbar(
-              config: quill.QuillSimpleToolbarConfig(
-                multiRowsDisplay: false,
-                showFontFamily: false,
-                showFontSize: false,
-                showSubscript: false,
-                showSuperscript: false,
-                showCodeBlock: false,
-                showAlignmentButtons: false,
-                showLink: false,
-                showSearchButton: false,
-                showInlineCode: false,
-                showUndo: true,
-                showRedo: true,
-                showBoldButton: true,
-                showItalicButton: true,
-                showBackgroundColorButton: true, // Выделение маркером (цветом)
-                showListBullets: true,          // Маркированный список
-                showListNumbers: true,          // Нумерованный список
-                showListCheck: true,            // Списки задач с галочками
-              ),
+          ),
+          // Передаем контроллер напрямую в панель инструментов
+          quill.QuillSimpleToolbar(
+            controller: _quillController!,
+            config: const quill.QuillSimpleToolbarConfig(
+              multiRowsDisplay: false,
+              showFontFamily: false,
+              showFontSize: false,
+              showSubscript: false,
+              showSuperscript: false,
+              showCodeBlock: false,
+              showAlignmentButtons: false,
+              showLink: false,
+              showSearchButton: false,
+              showInlineCode: false,
+              showUndo: true,
+              showRedo: true,
+              showBoldButton: true,
+              showItalicButton: true,
+              showBackgroundColorButton: true,
+              showListBullets: true,
+              showListNumbers: true,
+              showListCheck: true,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
