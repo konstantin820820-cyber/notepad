@@ -25,52 +25,12 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
-      - name: Overwrite build.gradle.kts with Modern AGP 9.0 DSL
-        run: |
-          cat << 'EOF' > android/app/build.gradle.kts
-          plugins {
-              id("com.android.application")
-              id("kotlin-android")
-              id("dev.flutter.flutter-gradle-plugin")
-          }
-
-          configure<com.android.build.api.dsl.ApplicationExtension> {
-              namespace = "com.example.local_notepad"
-              compileSdk = 36
-
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              // Используем новый современный синтаксис вместо устаревшего kotlinOptions
-              extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
-                  compilerOptions {
-                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                  }
-              }
-
-              defaultConfig {
-                  applicationId = "com.example.local_notepad"
-                  minSdk = 21
-                  targetSdk = 36
-                  versionCode = 1
-                  versionName = "1.0.0"
-              }
-
-              buildTypes {
-                  getByName("release") {
-                      signingConfig = signingConfigs.getByName("debug")
-                  }
-              }
-          }
-          EOF
-
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK (Force Android 16 SDK)
+        # Официальный нативный флаг Flutter принудительно соберет приложение под API 36 без правок кода
+        run: flutter build apk --release --compile-sdk-version=36 --target-sdk-version=36
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
