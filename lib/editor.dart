@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class EditorScreen extends StatefulWidget {
   final String? id;
@@ -18,12 +19,15 @@ class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   String _selectedCategory = 'Личное';
+  bool _isEditing = true; // По умолчанию открываем в режиме редактирования для новых заметок
 
   @override
   void initState() {
     super.initState();
     _titleController.text = widget.title ?? '';
     _contentController.text = widget.content ?? '';
+    if (widget.id != null) _isEditing = false; // Если заметка старая — открываем сначала в режиме красивого просмотра
+    
     if (widget.category != null && widget.categories.contains(widget.category)) {
       _selectedCategory = widget.category!;
     } else {
@@ -31,7 +35,6 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  // Общая функция для вставки обычных стилей (жирный, курсив, маркер)
   void _insertStyle(String openTag, String closeTag) {
     final text = _contentController.text;
     final selection = _contentController.selection;
@@ -53,23 +56,20 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  // УМНАЯ ЛОГИКА ДЛЯ СПИСКОВ И КНОПОК НАВЕРХУ КЛАВИАТУРЫ
   void _insertBlockStructure(String type) {
     final text = _contentController.text;
     final selection = _contentController.selection;
     final int cursorPosition = selection.baseOffset == -1 ? text.length : selection.baseOffset;
 
-    // Определяем, находится ли курсор в начале новой строки
-    bool isStartOfLine = cursorPosition == 0 || text.codeUnitAt(cursorPosition - 1) == 10; // 10 — код символа \n
+    bool isStartOfLine = cursorPosition == 0 || text.codeUnitAt(cursorPosition - 1) == 10;
     String prefix = isStartOfLine ? "" : "\n";
 
     String marker = "";
     if (type == 'bullet') {
-      marker = "• ";
+      marker = "- ";
     } else if (type == 'checkbox') {
-      marker = "[ ] ";
+      marker = "- [ ] "; // Стандартный синтаксис нажимаемых чекбоксов в Markdown
     } else if (type == 'number') {
-      // Умный поиск предыдущего номера строки для автоинкремента
       int nextNumber = 1;
       final textBeforeCursor = text.substring(0, cursorPosition);
       final lines = textBeforeCursor.split('\n');
@@ -89,7 +89,6 @@ class _EditorScreenState extends State<EditorScreen> {
 
     final String insertion = "$prefix$marker";
     final newText = text.replaceRange(cursorPosition, cursorPosition, insertion);
-    
     _contentController.text = newText;
     _contentController.selection = TextSelection.collapsed(offset: cursorPosition + insertion.length);
   }
@@ -107,11 +106,19 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Поддержка выделения цветом через HTML-тег <mark>, так как в базовом Markdown его нет
+    String formattedContent = _contentController.text.replaceAll('==', '<mark>').replaceAll('==', '</mark>');
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.id == null ? 'Новая заметка' : 'Редактирование'),
+        title: Text(_isEditing ? 'Редактирование' : 'Просмотр'),
         actions: [
-          IconButton(icon: const Icon(Icons.copy), onPressed: _copyToClipboard, tooltip: 'Копировать текст'),
+          IconButton(
+            icon: Icon(_isEditing ? Icons.visibility : Icons.edit),
+            onPressed: () => setState(() => _isEditing = !_isEditing),
+            tooltip: _isEditing ? 'Режим просмотра' : 'Режим редактирования',
+          ),
+          IconButton(icon: const Icon(Icons.copy), onPressed: _copyToClipboard, tooltip: 'Копировать'),
           DropdownButton<String>(
             value: _selectedCategory,
             underline: const SizedBox(),
@@ -134,46 +141,83 @@ class _EditorScreenState extends State<EditorScreen> {
           )
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: TextField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _contentController,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                style: const TextStyle(fontSize: 16),
-                decoration: const InputDecoration(hintText: 'Текст заметки...', border: InputBorder.none),
-              ),
-            ),
-          ),
-          // ПАНЕЛЬ ИНСТРУМЕНТОВ
-          Container(
-            color: const Color(0xFF333333),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+      body: _isEditing
+          ? Column(
               children: [
-                IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertStyle('**', '**')),
-                IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertStyle('*', '*')),
-                IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertStyle('==', '==')), // Чистый Markdown маркер
-                IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertBlockStructure('bullet')),
-                IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertBlockStructure('number')),
-                IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertBlockStructure('checkbox')),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: TextField(
+                    controller: _titleController,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: TextField(
+                      controller: _contentController,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: const InputDecoration(hintText: 'Текст заметки...', border: InputBorder.none),
+                    ),
+                  ),
+                ),
+                Container(
+                  color: const Color(0xFF333333),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertStyle('**', '**')),
+                      IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertStyle('*', '*')),
+                      IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertStyle('==', '==')), // Выделение маркером
+                      IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertBlockStructure('bullet')),
+                      IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertBlockStructure('number')),
+                      IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertBlockStructure('checkbox')),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                Text(
+                  _titleController.text.isEmpty ? 'Без названия' : _titleController.text,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const Divider(height: 20),
+                // КРАСИВАЯ СИСТЕМНАЯ ОТРИСОВКА ВИЗУАЛА (Жирный, Курсив, Цвет, Квадратики)
+                MarkdownBody(
+                  data: formattedContent,
+                  selectable: true,
+                  shrinkWrap: true,
+                  // Оживляем галочки: при нажатии на квадратик в режиме просмотра статус меняется сам!
+                  onTapCheckbox: (bool checked, int index) {
+                    setState(() {
+                      int count = -1;
+                      final lines = _contentController.text.split('\n');
+                      for (int i = 0; i < lines.length; i++) {
+                        if (lines[i].contains('- [ ]') || lines[i].contains('- [x]')) {
+                          count++;
+                          if (count == index) {
+                            if (checked) {
+                              lines[i] = lines[i].replaceAll('- [ ]', '- [x]');
+                            } else {
+                              lines[i] = lines[i].replaceAll('- [x]', '- [ ]');
+                            }
+                            break;
+                          }
+                        }
+                      }
+                      _contentController.text = lines.join('\n');
+                    });
+                  },
+                ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
