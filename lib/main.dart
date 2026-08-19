@@ -103,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await prefs.setString('local_notes_v3', encodedList);
   }
 
-  // МЕНЮ УПРАВЛЕНИЯ РАЗДЕЛАМИ
   void _manageCategories() {
     showDialog(
       context: context,
@@ -144,32 +143,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 10),
                     Expanded(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _categories.length,
-                        itemBuilder: (context, index) {
-                          final cat = _categories[index];
-                          if (cat == 'Все' || cat == 'Личное') return const SizedBox(); // Системные разделы нельзя удалить
-                          return ListTile(
-                            title: Text(cat),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  // Переводим заметки удаляемой категории в 'Личное'
-                                  for (var note in _notes) {
-                                    if (note.category == cat) note.category = 'Личное';
-                                  }
-                                  _categories.remove(cat);
-                                  _tabController = TabController(length: _categories.length, vsync: this);
-                                });
-                                _saveNotes();
-                                _saveCategories();
-                                setDialogState(() {});
-                              },
-                            ),
-                          );
-                        },
+                      child: SizedBox(
+                        height: 200,
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _categories.length,
+                          itemBuilder: (context, index) {
+                            final cat = _categories[index];
+                            if (cat == 'Все' || cat == 'Личное') return const SizedBox();
+                            return ListTile(
+                              title: Text(cat),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    for (var note in _notes) {
+                                      if (note.category == cat) note.category = 'Личное';
+                                    }
+                                    _categories.remove(cat);
+                                    _tabController = TabController(length: _categories.length, vsync: this);
+                                  });
+                                  _saveNotes();
+                                  _saveCategories();
+                                  setDialogState(() {});
+                                },
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: const Text('Мой Блокнот'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings), // Кнопка настройки разделов
+            icon: const Icon(Icons.settings),
             onPressed: _manageCategories,
           )
         ],
@@ -252,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             context,
                             MaterialPageRoute(builder: (context) => EditorScreen(
                               id: note.id, title: note.title, contentDelta: note.contentDelta, category: note.category, categories: _categories,
-                            )),a
+                            )),
                           );
                           if (result != null) {
                             setState(() {
