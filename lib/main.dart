@@ -10,7 +10,6 @@ void main() => runApp(const LocalNotesApp());
 
 class LocalNotesApp extends StatelessWidget {
   const LocalNotesApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -22,10 +21,7 @@ class LocalNotesApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('ru', 'RU')],
       locale: const Locale('ru', 'RU'),
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark),
-      ),
+      theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark)),
       home: const HomeScreen(),
     );
   }
@@ -72,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? notesString = prefs.getString('local_notes_v3');
+    final String? notesString = prefs.getString('local_notes_v4');
     if (notesString != null) {
       final List<dynamic> decodedList = jsonDecode(notesString);
       setState(() { _notes = decodedList.map((item) => Note.fromMap(item)).toList(); });
@@ -82,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _saveNotes() async {
     final prefs = await SharedPreferences.getInstance();
     final String encodedList = jsonEncode(_notes.map((note) => note.toMap()).toList());
-    await prefs.setString('local_notes_v3', encodedList);
+    await prefs.setString('local_notes_v4', encodedList);
   }
 
   void _manageCategories() {
@@ -185,6 +181,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     if (_tabController == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    // Создаем строго типизированный список вкладок-виджетов
+    final List<Widget> tabViews = _categories.map((category) {
+      final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
+      return NotesGrid(
+        filteredNotes: filteredNotes,
+        categories: _categories,
+        onDelete: _deleteNote,
+        onUpdate: (note, result) {
+          setState(() {
+            int idx = _notes.indexWhere((n) => n.id == note.id);
+            if (idx != -1) {
+              _notes[idx] = Note(id: note.id, title: result['title'], content: result['content'], category: result['category']);
+            }
+          });
+          _saveNotes();
+        },
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (category == 'Все') {
+              final item = _notes.removeAt(oldIndex);
+              _notes.insert(newIndex, item);
+            } else {
+              final tabNotes = _notes.where((n) => n.category == category).toList();
+              final item = tabNotes.removeAt(oldIndex);
+              tabNotes.insert(newIndex, item);
+              final otherNotes = _notes.where((n) => n.category != category).toList();
+              _notes = [...tabNotes, ...otherNotes];
+            }
+          });
+          _saveNotes();
+        },
+      );
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мой Блокнот'),
@@ -193,37 +223,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _categories.map((category) {
-          final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
-          return filteredNotes.isEmpty
-              ? const Center(child: Text('Здесь пока пусто', style: TextStyle(color: Colors.white54)))
-              : NotesGrid(
-                  filteredNotes: filteredNotes,
-                  categories: _categories,
-                  onDelete: _deleteNote,
-                  onUpdate: (note, result) {
-                    setState(() {
-                      int idx = _notes.indexWhere((n) => n.id == note.id);
-                      if (idx != -1) {
-                        _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
-                      }
-                    });
-                    _saveNotes();
-                  },
-                );
-        }).toList(),
+        children: tabViews,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)));
           if (result != null) {
             setState(() {
-              _notes.add(Note(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: result['title'],
-                contentDelta: result['contentDelta'],
-                category: result['category'],
-              ));
+              _notes.add(Note(id: DateTime.now().millisecondsSinceEpoch.toString(), title: result['title'], content: result['content'], category: result['category']));
             });
             _saveNotes();
           }
