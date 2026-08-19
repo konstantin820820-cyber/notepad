@@ -25,10 +25,10 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
-      - name: Patch Android SDK Version to 34
+      - name: Patch Android SDK Version to 36
         run: |
-          sed -i 's/compileSdk = .*/compileSdk = 34/g' android/app/build.gradle.kts || true
-          sed -i 's/targetSdk = .*/targetSdk = 34/g' android/app/build.gradle.kts || true
+          sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle.kts || true
+          sed -i 's/targetSdk = .*/targetSdk = 36/g' android/app/build.gradle.kts || true
 
       - name: Install dependencies
         run: flutter pub get
