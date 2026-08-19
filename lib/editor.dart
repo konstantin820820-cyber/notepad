@@ -42,6 +42,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void dispose() {
     _editorFocusNode.dispose();
+    _quillController?.dispose();
     super.dispose();
   }
 
@@ -92,14 +93,15 @@ class _EditorScreenState extends State<EditorScreen> {
                 focusNode: _editorFocusNode,
                 config: const quill.QuillEditorConfig(
                   placeholder: 'Текст заметки...',
-                  autoFocus: true,
+                  autoFocus: false, // Отключаем автоматический фокус при входе
                 ),
               ),
             ),
           ),
-          // Панель в контрастном контейнере с принудительной покраской скрытых иконок
+          // Контейнер с гарантированным отображением элементов
           Container(
-            color: const Color(0xFF2C2C2C), // Фиксированный графитовый фон
+            color: const Color(0xFFF0F0F0), // Светло-серый контрастный фон панели инструментов для темной темы
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: quill.QuillSimpleToolbar(
               controller: _quillController!,
               config: quill.QuillSimpleToolbarConfig(
@@ -121,12 +123,12 @@ class _EditorScreenState extends State<EditorScreen> {
                 showListBullets: true,
                 showListNumbers: true,
                 showListCheck: true,
-                // Задаем принудительно белый цвет для всех иконок, чтобы они проявились
+                // Явно переопределяем цвета иконок для гарантированной видимости на светлом фоне
                 buttonOptions: quill.QuillSimpleToolbarButtonOptions(
                   base: quill.QuillToolbarBaseButtonOptions(
                     iconTheme: const quill.QuillIconTheme(
-                      iconButtonSelectedData: quill.IconButtonData(color: Colors.amber), // Выбранные - желтые
-                      iconButtonUnselectedData: quill.IconButtonData(color: Colors.white), // Обычные - белые
+                      iconButtonSelectedData: quill.IconButtonData(color: Colors.amber),      // Выбранные - желтые
+                      iconButtonUnselectedData: quill.IconButtonData(color: Colors.black87),  // Свободные кнопки - черные
                     ),
                   ),
                 ),
