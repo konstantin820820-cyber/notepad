@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'editor.dart';
 import 'note.dart';
+import 'grid_view.dart';
 
 void main() => runApp(const LocalNotesApp());
 
@@ -100,12 +101,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: textController,
-                            decoration: const InputDecoration(hintText: 'Новый раздел'),
-                          ),
-                        ),
+                        Expanded(child: TextField(controller: textController, decoration: const InputDecoration(hintText: 'Новый раздел'))),
                         IconButton(
                           icon: const Icon(Icons.add, color: Colors.amber),
                           onPressed: () {
@@ -157,9 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Готово'))
-              ],
+              actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Готово'))],
             );
           },
         );
@@ -194,17 +188,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мой Блокнот'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _manageCategories,
-          )
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: _categories.map((cat) => Tab(text: cat)).toList(),
-        ),
+        actions: [IconButton(icon: const Icon(Icons.settings), onPressed: _manageCategories)],
+        bottom: TabBar(controller: _tabController, isScrollable: true, tabs: _categories.map((cat) => Tab(text: cat)).toList()),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -212,42 +197,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
           return filteredNotes.isEmpty
               ? const Center(child: Text('Здесь пока пусто', style: TextStyle(color: Colors.white54)))
-              : Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.9,
-                    ),
-                    itemCount: filteredNotes.length,
-                    itemBuilder: (context, index) {
-                      final note = filteredNotes[index];
-                      String previewText = "";
-                      try {
-                        final List<dynamic> json = jsonDecode(note.contentDelta);
-                        previewText = json.map((e) => e['insert'] ?? '').join().trim();
-                      } catch (_) {
-                        previewText = note.contentDelta;
+              : NotesGrid(
+                  filteredNotes: filteredNotes,
+                  categories: _categories,
+                  onDelete: _deleteNote,
+                  onUpdate: (note, result) {
+                    setState(() {
+                      int idx = _notes.indexWhere((n) => n.id == note.id);
+                      if (idx != -1) {
+                        _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
                       }
-                      return GestureDetector(
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => EditorScreen(
-                              id: note.id, title: note.title, contentDelta: note.contentDelta, category: note.category, categories: _categories,
-                            )),
-                          );
-                          if (result != null) {
-                            setState(() {
-                              int idx = _notes.indexWhere((n) => n.id == note.id);
-                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
-                            });
-                            _saveNotes();
-                          }
-                        },
-                        onLongPress: () => _deleteNote(note),
-                        child: Card(
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    });
+                    _saveNotes();
+                  },
+                );
+        }).toList(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)));
+          if (result != null) {
+            setState(() {
+              _notes.add(Note(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                title: result['title'],
+                contentDelta: result['contentDelta'],
+                category: result['category'],
+              ));
+            });
+            _saveNotes();
+          }
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
