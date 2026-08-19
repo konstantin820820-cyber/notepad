@@ -12,7 +12,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   shared_preferences: ^2.3.5
-  flutter_quill: ^11.5.1
+  reorderable_grid_view: ^2.2.1
+  share_plus: ^7.2.1
 
 flutter:
   uses-material-design: true
