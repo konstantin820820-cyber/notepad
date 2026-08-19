@@ -19,14 +19,14 @@ class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   String _selectedCategory = 'Личное';
-  bool _isEditing = true; // По умолчанию открываем в режиме редактирования для новых заметок
+  bool _isEditing = true;
 
   @override
   void initState() {
     super.initState();
     _titleController.text = widget.title ?? '';
     _contentController.text = widget.content ?? '';
-    if (widget.id != null) _isEditing = false; // Если заметка старая — открываем сначала в режиме красивого просмотра
+    if (widget.id != null) _isEditing = false;
     
     if (widget.category != null && widget.categories.contains(widget.category)) {
       _selectedCategory = widget.category!;
@@ -68,7 +68,7 @@ class _EditorScreenState extends State<EditorScreen> {
     if (type == 'bullet') {
       marker = "- ";
     } else if (type == 'checkbox') {
-      marker = "- [ ] "; // Стандартный синтаксис нажимаемых чекбоксов в Markdown
+      marker = "- [ ] ";
     } else if (type == 'number') {
       int nextNumber = 1;
       final textBeforeCursor = text.substring(0, cursorPosition);
@@ -106,9 +106,6 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Поддержка выделения цветом через HTML-тег <mark>, так как в базовом Markdown его нет
-    String formattedContent = _contentController.text.replaceAll('==', '<mark>').replaceAll('==', '</mark>');
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Редактирование' : 'Просмотр'),
@@ -172,7 +169,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     children: [
                       IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertStyle('**', '**')),
                       IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertStyle('*', '*')),
-                      IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertStyle('==', '==')), // Выделение маркером
+                      IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertStyle('==', '==')),
                       IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertBlockStructure('bullet')),
                       IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertBlockStructure('number')),
                       IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertBlockStructure('checkbox')),
@@ -189,32 +186,10 @@ class _EditorScreenState extends State<EditorScreen> {
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const Divider(height: 20),
-                // КРАСИВАЯ СИСТЕМНАЯ ОТРИСОВКА ВИЗУАЛА (Жирный, Курсив, Цвет, Квадратики)
                 MarkdownBody(
-                  data: formattedContent,
+                  data: _contentController.text,
                   selectable: true,
                   shrinkWrap: true,
-                  // Оживляем галочки: при нажатии на квадратик в режиме просмотра статус меняется сам!
-                  onTapCheckbox: (bool checked, int index) {
-                    setState(() {
-                      int count = -1;
-                      final lines = _contentController.text.split('\n');
-                      for (int i = 0; i < lines.length; i++) {
-                        if (lines[i].contains('- [ ]') || lines[i].contains('- [x]')) {
-                          count++;
-                          if (count == index) {
-                            if (checked) {
-                              lines[i] = lines[i].replaceAll('- [ ]', '- [x]');
-                            } else {
-                              lines[i] = lines[i].replaceAll('- [x]', '- [ ]');
-                            }
-                            break;
-                          }
-                        }
-                      }
-                      _contentController.text = lines.join('\n');
-                    });
-                  },
                 ),
               ],
             ),
