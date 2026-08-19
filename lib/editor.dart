@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
 
 class EditorScreen extends StatefulWidget {
   final String? id;
@@ -31,12 +31,10 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  // Наша собственная логика вставки тегов Markdown (работает мгновенно!)
   void _insertMarkup(String openTag, String closeTag) {
     final text = _contentController.text;
     final selection = _contentController.selection;
 
-    // Если курсор не установлен, ставим в конец текста
     if (selection.start == -1 || selection.end == -1) {
       final currentOffset = text.length;
       final newText = text + openTag + closeTag;
@@ -54,9 +52,16 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  void _exportNote() {
+  // НАВНАЯ И БЕЗОПАСНАЯ ЛОГИКА КОПИРОВАНИЯ В БУФЕР ТЕЛЕФОНА
+  void _copyToClipboard() {
     final String fullText = "${_titleController.text}\n\n${_contentController.text}";
-    Share.share(fullText, subject: '${_titleController.text}.md');
+    Clipboard.setData(ClipboardData(text: fullText)).then((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Текст заметки скопирован в буфер обмена!')),
+        );
+      }
+    });
   }
 
   @override
@@ -65,7 +70,7 @@ class _EditorScreenState extends State<EditorScreen> {
       appBar: AppBar(
         title: Text(widget.id == null ? 'Новая заметка' : 'Редактирование'),
         actions: [
-          IconButton(icon: const Icon(Icons.sim_card_download), onPressed: _exportNote, tooltip: 'Экспорт'),
+          IconButton(icon: const Icon(Icons.copy), onPressed: _copyToClipboard, tooltip: 'Копировать текст'),
           DropdownButton<String>(
             value: _selectedCategory,
             underline: const SizedBox(),
@@ -110,43 +115,18 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ),
           ),
-          // НАША СОБСТВЕННАЯ СТАБИЛЬНАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ
           Container(
-            color: const Color(0xFF333333), // Контрастный графитовый цвет полосы
+            color: const Color(0xFF333333),
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.format_bold, color: Colors.white), 
-                  onPressed: () => _insertMarkup('**', '**'),
-                  tooltip: 'Жирный',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.format_italic, color: Colors.white), 
-                  onPressed: () => _insertMarkup('*', '*'),
-                  tooltip: 'Курсив',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.border_color, color: Colors.white), 
-                  onPressed: () => _insertMarkup('<bg>', '</bg>'),
-                  tooltip: 'Маркер',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.format_list_bulleted, color: Colors.white), 
-                  onPressed: () => _insertMarkup('\n- ', ''),
-                  tooltip: 'Список',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.format_list_numbered, color: Colors.white), 
-                  onPressed: () => _insertMarkup('\n1. ', ''),
-                  tooltip: 'Нумерация',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.check_box_outlined, color: Colors.white), 
-                  onPressed: () => _insertMarkup('\n[ ] ', ''),
-                  tooltip: 'Чекбокс',
-                ),
+                IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertMarkup('**', '**')),
+                IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertMarkup('*', '*')),
+                IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertMarkup('<bg>', '</bg>')),
+                IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertMarkup('\n- ', '')),
+                IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertMarkup('\n1. ', '')),
+                IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertMarkup('\n[ ] ', '')),
               ],
             ),
           ),
