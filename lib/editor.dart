@@ -18,6 +18,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   quill.QuillController? _quillController;
+  final FocusNode _editorFocusNode = FocusNode(); // Узел фокуса для связи панели и текста
   String _selectedCategory = 'Личное';
 
   @override
@@ -36,6 +37,12 @@ class _EditorScreenState extends State<EditorScreen> {
       _quillController = quill.QuillController.basic();
       _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
     }
+  }
+
+  @override
+  void dispose() {
+    _editorFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -82,6 +89,7 @@ class _EditorScreenState extends State<EditorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: quill.QuillEditor.basic(
                 controller: _quillController!,
+                focusNode: _editorFocusNode, // Передаем фокус
                 config: const quill.QuillEditorConfig(
                   placeholder: 'Текст заметки...',
                   autoFocus: true,
@@ -89,7 +97,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ),
           ),
-          // Передаем контроллер напрямую в панель инструментов
+          // Профессиональная панель, привязанная к фокусу редактора
           quill.QuillSimpleToolbar(
             controller: _quillController!,
             config: const quill.QuillSimpleToolbarConfig(
