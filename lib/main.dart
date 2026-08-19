@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'editor.dart';
+import 'note.dart';
 
 void main() => runApp(const LocalNotesApp());
 
@@ -25,26 +26,6 @@ class LocalNotesApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark),
       ),
       home: const HomeScreen(),
-    );
-  }
-}
-
-class Note {
-  String id;
-  String title;
-  String contentDelta;
-  String category;
-
-  Note({required this.id, required this.title, required this.contentDelta, required this.category});
-
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'contentDelta': contentDelta, 'category': category};
-
-  factory Note.fromMap(Map<String, dynamic> map) {
-    return Note(
-      id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: map['title'] ?? '',
-      contentDelta: map['contentDelta'] ?? '[{"insert":"\\n"}]',
-      category: map['category'] ?? 'Личное',
     );
   }
 }
@@ -258,3 +239,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           if (result != null) {
                             setState(() {
                               int idx = _notes.indexWhere((n) => n.id == note.id);
+                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
+                            });
+                            _saveNotes();
+                          }
+                        },
+                        onLongPress: () => _deleteNote(note),
+                        child: Card(
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
