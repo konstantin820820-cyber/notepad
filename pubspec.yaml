@@ -9,7 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   shared_preferences: ^2.3.5
+  flutter_quill: ^10.1.0
 
 flutter:
   uses-material-design: true
