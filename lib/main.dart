@@ -97,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: _categories.map((category) {
           final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
           
-          // Родная перетаскиваемая сетка Flutter без багов со смещением индексов
           return ReorderableList(
             itemCount: filteredNotes.length,
             onReorder: (oldIndex, newIndex) {
@@ -212,8 +211,18 @@ class _EditorScreenState extends State<EditorScreen> {
               child: FleatherEditor(controller: _controller!, focusNode: FocusNode()),
             ),
           ),
-          // РОДНАЯ, СТОПРОЦЕНТНО РАБОЧАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ FLEATHER
-          FleatherToolbar.basic(controller: _controller!),
+          // Корректная и лаконичная панель инструментов для актуальной версии Fleather
+          FleatherToolbarProvider(
+            controller: _controller!,
+            child: const FleatherToolbar(
+              children: [
+                ToggleAttributeButton(attribute: ParchmentAttribute.bold, icon: Icons.format_bold),
+                ToggleAttributeButton(attribute: ParchmentAttribute.italic, icon: Icons.format_italic),
+                ToggleAttributeButton(attribute: ParchmentAttribute.block.bulletList, icon: Icons.format_list_bulleted),
+                ToggleAttributeButton(attribute: ParchmentAttribute.block.numberList, icon: Icons.format_list_numbered),
+              ],
+            ),
+          ),
         ],
       ),
     );
