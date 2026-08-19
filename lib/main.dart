@@ -211,17 +211,14 @@ class _EditorScreenState extends State<EditorScreen> {
               child: FleatherEditor(controller: _controller!, focusNode: FocusNode()),
             ),
           ),
-          // Корректная и лаконичная панель инструментов для актуальной версии Fleather
-          FleatherToolbarProvider(
-            controller: _controller!,
-            child: const FleatherToolbar(
-              children: [
-                ToggleAttributeButton(attribute: ParchmentAttribute.bold, icon: Icons.format_bold),
-                ToggleAttributeButton(attribute: ParchmentAttribute.italic, icon: Icons.format_italic),
-                ToggleAttributeButton(attribute: ParchmentAttribute.block.bulletList, icon: Icons.format_list_bulleted),
-                ToggleAttributeButton(attribute: ParchmentAttribute.block.numberList, icon: Icons.format_list_numbered),
-              ],
-            ),
+          // Чистый синтаксис панели без ключевого слова const и лишних оберток провайдера
+          FleatherToolbar(
+            children: [
+              ToggleAttributeButton(attribute: ParchmentAttribute.bold, icon: const Icon(Icons.format_bold)),
+              ToggleAttributeButton(attribute: ParchmentAttribute.italic, icon: const Icon(Icons.format_italic)),
+              ToggleAttributeButton(attribute: ParchmentAttribute.block.bulletList, icon: const Icon(Icons.format_list_bulleted)),
+              ToggleAttributeButton(attribute: ParchmentAttribute.block.numberList, icon: const Icon(Icons.format_list_numbered)),
+            ],
           ),
         ],
       ),
