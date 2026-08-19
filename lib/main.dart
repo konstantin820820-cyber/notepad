@@ -163,6 +163,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   FleatherController? _controller;
+  final FocusNode _focusNode = FocusNode();
   String _selectedCategory = 'Личное';
 
   @override
@@ -177,6 +178,13 @@ class _EditorScreenState extends State<EditorScreen> {
       _controller = FleatherController();
       _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
     }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
@@ -208,18 +216,11 @@ class _EditorScreenState extends State<EditorScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: FleatherEditor(controller: _controller!, focusNode: FocusNode()),
+              child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
             ),
           ),
-          // Чистый синтаксис панели без ключевого слова const и лишних оберток провайдера
-          FleatherToolbar(
-            children: [
-              ToggleAttributeButton(attribute: ParchmentAttribute.bold, icon: const Icon(Icons.format_bold)),
-              ToggleAttributeButton(attribute: ParchmentAttribute.italic, icon: const Icon(Icons.format_italic)),
-              ToggleAttributeButton(attribute: ParchmentAttribute.block.bulletList, icon: const Icon(Icons.format_list_bulleted)),
-              ToggleAttributeButton(attribute: ParchmentAttribute.block.numberList, icon: const Icon(Icons.format_list_numbered)),
-            ],
-          ),
+          // Родная встроенная горизонтальная панель Fleather без ошибок типов кнопок
+          FleatherToolbar.basic(controller: _controller!),
         ],
       ),
     );
