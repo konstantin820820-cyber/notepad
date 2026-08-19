@@ -82,24 +82,26 @@ class _EditorScreenState extends State<EditorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: quill.QuillEditor.basic(
                 controller: _quillController!,
-                config: const quill.QuillEditorConfig(placeholder: 'Текст заметки...', autoFocus: true),
+                configurations: const quill.QuillEditorConfigurations(
+                  placeholder: 'Текст заметки...',
+                  autoFocus: true,
+                ),
               ),
             ),
           ),
           quill.QuillSimpleToolbar(
             controller: _quillController!,
-            config: const quill.QuillSimpleToolbarConfig(
+            configurations: const quill.QuillSimpleToolbarConfigurations(
               multiRowsDisplay: false,
               showFontFamily: false,
               showFontSize: false,
-              showDegreeButton: false,
-              showInlineCode: false,
               showSubscript: false,
               showSuperscript: false,
               showCodeBlock: false,
               showAlignmentButtons: false,
               showLink: false,
               showSearchButton: false,
+              showInlineCode: false,
               showUndo: true,
               showRedo: true,
               showBoldButton: true,
