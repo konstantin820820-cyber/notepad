@@ -20,10 +20,13 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.0' # Установили версию, которую просит компилятор
+          flutter-version: '3.47.0'
 
-      - name: Recreate platform folders
-        run: flutter create --platforms=android .
+      - name: Recreate platform folders with Android 14 SDK
+        run: |
+          flutter create --platforms=android .
+          sed -i 's/compileSdk = .*/compileSdk = 34/g' android/app/build.gradle || true
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/g' android/app/build.gradle || true
 
       - name: Install dependencies
         run: flutter pub get
