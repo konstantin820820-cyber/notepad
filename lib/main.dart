@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'editor.dart';
 
 void main() => runApp(const LocalNotesApp());
 
@@ -22,10 +22,7 @@ class LocalNotesApp extends StatelessWidget {
       locale: const Locale('ru', 'RU'),
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.amber, 
-          brightness: Brightness.dark
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark),
       ),
       home: const HomeScreen(),
     );
@@ -38,19 +35,9 @@ class Note {
   String contentDelta;
   String category;
 
-  Note({
-    required this.id,
-    required this.title,
-    required this.contentDelta,
-    required this.category
-  });
+  Note({required this.id, required this.title, required this.contentDelta, required this.category});
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'title': title,
-    'contentDelta': contentDelta,
-    'category': category,
-  };
+  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'contentDelta': contentDelta, 'category': category};
 
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
@@ -64,7 +51,6 @@ class Note {
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -83,24 +69,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<void> _loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? notesString = prefs.getString('local_notes_v2');
+    final String? notesString = prefs.getString('local_notes_v3');
     if (notesString != null) {
       final List<dynamic> decodedList = jsonDecode(notesString);
-      setState(() {
-        _notes = decodedList.map((item) => Note.fromMap(item)).toList();
-      });
+      setState(() { _notes = decodedList.map((item) => Note.fromMap(item)).toList(); });
     }
   }
 
   Future<void> _saveNotes() async {
     final prefs = await SharedPreferences.getInstance();
     final String encodedList = jsonEncode(_notes.map((note) => note.toMap()).toList());
-    await prefs.setString('local_notes_v2', encodedList);
-  }
-
-  List<Note> _getFilteredNotes(String category) {
-    if (category == 'Все') return _notes;
-    return _notes.where((note) => note.category == category).toList();
+    await prefs.setString('local_notes_v3', encodedList);
   }
 
   void _deleteNote(Note note) {
@@ -137,17 +116,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: _categories.map((category) {
-          final filteredNotes = _getFilteredNotes(category);
+          final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
           return filteredNotes.isEmpty
               ? const Center(child: Text('Здесь пока пусто', style: TextStyle(color: Colors.white54)))
               : Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: GridView.builder(
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.9,
+                      crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.9,
                     ),
                     itemCount: filteredNotes.length,
                     itemBuilder: (context, index) {
@@ -159,17 +135,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       } catch (_) {
                         previewText = note.contentDelta;
                       }
-
                       return GestureDetector(
                         onTap: () async {
-                          final Note? updatedNote = await Navigator.push(
+                          final result = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)),
+                            MaterialPageRoute(builder: (context) => EditorScreen(
+                              id: note.id, title: note.title, contentDelta: note.contentDelta, category: note.category, categories: _categories,
+                            )),
                           );
-                          if (updatedNote != null) {
+                          if (result != null) {
                             setState(() {
                               int idx = _notes.indexWhere((n) => n.id == note.id);
-                              if (idx != -1) _notes[idx] = updatedNote;
+                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
                             });
                             _saveNotes();
                           }
@@ -182,30 +159,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  note.title.isEmpty ? 'Без названия' : note.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                Text(note.title.isEmpty ? 'Без названия' : note.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 4),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white10,
-                                    borderRadius: BorderRadius.circular(4)
-                                  ),
+                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
                                   child: Text(note.category, style: const TextStyle(fontSize: 10, color: Colors.amber)),
                                 ),
                                 const SizedBox(height: 6),
-                                Expanded(
-                                  child: Text(
-                                    previewText,
-                                    style: const TextStyle(fontSize: 13, color: Colors.white70),
-                                    maxLines: 4,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
+                                Expanded(child: Text(previewText, style: const TextStyle(fontSize: 13, color: Colors.white70), maxLines: 4, overflow: TextOverflow.ellipsis)),
                               ],
                             ),
                           ),
@@ -218,12 +180,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final Note? newNote = await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)),
           );
-          if (newNote != null) {
-            setState(() { _notes.add(newNote); });
+          if (result != null) {
+            setState(() {
+              _notes.add(Note(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                title: result['title'],
+                contentDelta: result['contentDelta'],
+                category: result['category'],
+              ));
+            });
             _saveNotes();
           }
         },
@@ -232,50 +201,3 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 }
-
-class EditorScreen extends StatefulWidget {
-  final Note? note;
-  final List<String> categories;
-  const EditorScreen({super.key, this.note, required this.categories});
-
-  @override
-  State<EditorScreen> createState() => _EditorScreenState();
-}
-
-class _EditorScreenState extends State<EditorScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  quill.QuillController? _quillController;
-  String _selectedCategory = 'Личное';
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.note != null) {
-      _titleController.text = widget.note!.title;
-      _selectedCategory = widget.note!.category;
-      try {
-        final doc = quill.Document.fromJson(jsonDecode(widget.note!.contentDelta));
-        _quillController = quill.QuillController(document: doc, selection: const TextSelection.collapsed(offset: 0));
-      } catch (_) {
-        _quillController = quill.QuillController.basic();
-      }
-    } else {
-      _quillController = quill.QuillController.basic();
-      if (widget.categories.contains('Личное')) {
-        _selectedCategory = 'Личное';
-      } else {
-        _selectedCategory = widget.categories.first;
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.note == null ? 'Новая заметка' : 'Редактирование'),
-        actions: [
-          DropdownButton<String>(
-            value: _selectedCategory,
-            underline: const SizedBox(),
-            items: widget.categories.where((cat) => cat != 'Все').map((String value) {
