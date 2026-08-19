@@ -234,3 +234,65 @@ class _EditorScreenState extends State<EditorScreen> {
     if (widget.note != null) {
       _titleController.text = widget.note!.title;
       _selectedCategory = widget.note!.category;
+      final doc = ParchmentDocument.fromJson(jsonDecode(widget.note!.contentJson));
+      _controller = FleatherController(document: doc);
+    } else {
+      _controller = FleatherController();
+      _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Заметка'),
+        actions: [
+          DropdownButton<String>(
+            value: _selectedCategory,
+            items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+            onChanged: (val) { if (val != null) setState(() => _selectedCategory = val); },
+          ),
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: () {
+              final jsonText = jsonEncode(_controller!.document.toJson());
+              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonText, 'category': _selectedCategory});
+            },
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _titleController,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
+            ),
+          ),
+          // Обертка в Material решает проблему пустых перечеркнутых квадратов на Android
+          Material(
+            elevation: 4,
+            color: Theme.of(context).cardColor,
+            child: FleatherToolbar.basic(controller: _controller!),
+          ),
+        ],
+      ),
+    );
+  }
+}
