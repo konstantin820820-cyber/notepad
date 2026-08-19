@@ -44,7 +44,7 @@ class Note {
       id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: map['title'] ?? '',
       contentDelta: map['contentDelta'] ?? '[{"insert":"\\n"}]',
-      category: map['category'] ?? 'Все',
+      category: map['category'] ?? 'Личное',
     );
   }
 }
@@ -55,16 +55,37 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Note> _notes = [];
-  final List<String> _categories = ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
+  List<String> _categories = ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
   TabController? _tabController;
 
   @override
   void initState() {
     super.initState();
+    _initTabsAndData();
+  }
+
+  void _initTabsAndData() async {
     _tabController = TabController(length: _categories.length, vsync: this);
-    _loadNotes();
+    await _loadCategories();
+    await _loadNotes();
+  }
+
+  Future<void> _loadCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? savedCats = prefs.getStringList('local_categories');
+    if (savedCats != null && savedCats.isNotEmpty) {
+      setState(() {
+        _categories = savedCats;
+        _tabController = TabController(length: _categories.length, vsync: this);
+      });
+    }
+  }
+
+  Future<void> _saveCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('local_categories', _categories);
   }
 
   Future<void> _loadNotes() async {
@@ -80,6 +101,88 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final prefs = await SharedPreferences.getInstance();
     final String encodedList = jsonEncode(_notes.map((note) => note.toMap()).toList());
     await prefs.setString('local_notes_v3', encodedList);
+  }
+
+  // МЕНЮ УПРАВЛЕНИЯ РАЗДЕЛАМИ
+  void _manageCategories() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final textController = TextEditingController();
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Управление разделами'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: textController,
+                            decoration: const InputDecoration(hintText: 'Новый раздел'),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, color: Colors.amber),
+                          onPressed: () {
+                            if (textController.text.trim().isNotEmpty && !_categories.contains(textController.text.trim())) {
+                              setState(() {
+                                _categories.add(textController.text.trim());
+                                _tabController = TabController(length: _categories.length, vsync: this);
+                              });
+                              _saveCategories();
+                              setDialogState(() {});
+                              textController.clear();
+                            }
+                          },
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          if (cat == 'Все' || cat == 'Личное') return const SizedBox(); // Системные разделы нельзя удалить
+                          return ListTile(
+                            title: Text(cat),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  // Переводим заметки удаляемой категории в 'Личное'
+                                  for (var note in _notes) {
+                                    if (note.category == cat) note.category = 'Личное';
+                                  }
+                                  _categories.remove(cat);
+                                  _tabController = TabController(length: _categories.length, vsync: this);
+                                });
+                                _saveNotes();
+                                _saveCategories();
+                                setDialogState(() {});
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Готово'))
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _deleteNote(Note note) {
@@ -104,9 +207,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    if (_tabController == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мой Блокнот'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings), // Кнопка настройки разделов
+            onPressed: _manageCategories,
+          )
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -141,63 +252,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             context,
                             MaterialPageRoute(builder: (context) => EditorScreen(
                               id: note.id, title: note.title, contentDelta: note.contentDelta, category: note.category, categories: _categories,
-                            )),
+                            )),a
                           );
                           if (result != null) {
                             setState(() {
                               int idx = _notes.indexWhere((n) => n.id == note.id);
-                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentDelta: result['contentDelta'], category: result['category']);
-                            });
-                            _saveNotes();
-                          }
-                        },
-                        onLongPress: () => _deleteNote(note),
-                        child: Card(
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(note.title.isEmpty ? 'Без названия' : note.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
-                                  child: Text(note.category, style: const TextStyle(fontSize: 10, color: Colors.amber)),
-                                ),
-                                const SizedBox(height: 6),
-                                Expanded(child: Text(previewText, style: const TextStyle(fontSize: 13, color: Colors.white70), maxLines: 4, overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-        }).toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)),
-          );
-          if (result != null) {
-            setState(() {
-              _notes.add(Note(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: result['title'],
-                contentDelta: result['contentDelta'],
-                category: result['category'],
-              ));
-            });
-            _saveNotes();
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
