@@ -1,15 +1,14 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:share_plus/share_plus.dart';
 
 class EditorScreen extends StatefulWidget {
   final String? id;
   final String? title;
-  final String? contentDelta;
+  final String? content;
   final String? category;
   final List<String> categories;
 
-  const EditorScreen({super.key, this.id, this.title, this.contentDelta, this.category, required this.categories});
+  const EditorScreen({super.key, this.id, this.title, this.content, this.category, required this.categories});
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
@@ -17,33 +16,47 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
-  quill.QuillController? _quillController;
-  final FocusNode _editorFocusNode = FocusNode();
+  final TextEditingController _contentController = TextEditingController();
   String _selectedCategory = 'Личное';
 
   @override
   void initState() {
     super.initState();
-    if (widget.id != null) {
-      _titleController.text = widget.title ?? '';
-      _selectedCategory = widget.category ?? 'Личное';
-      try {
-        final doc = quill.Document.fromJson(jsonDecode(widget.contentDelta!));
-        _quillController = quill.QuillController(document: doc, selection: const TextSelection.collapsed(offset: 0));
-      } catch (_) {
-        _quillController = quill.QuillController.basic();
-      }
+    _titleController.text = widget.title ?? '';
+    _contentController.text = widget.content ?? '';
+    if (widget.category != null && widget.categories.contains(widget.category)) {
+      _selectedCategory = widget.category!;
     } else {
-      _quillController = quill.QuillController.basic();
       _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
     }
   }
 
-  @override
-  void dispose() {
-    _editorFocusNode.dispose();
-    _quillController?.dispose();
-    super.dispose();
+  // Наша собственная логика вставки тегов Markdown (работает мгновенно!)
+  void _insertMarkup(String openTag, String closeTag) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+
+    // Если курсор не установлен, ставим в конец текста
+    if (selection.start == -1 || selection.end == -1) {
+      final currentOffset = text.length;
+      final newText = text + openTag + closeTag;
+      _contentController.text = newText;
+      _contentController.selection = TextSelection.collapsed(offset: currentOffset + openTag.length);
+      return;
+    }
+
+    final selectedText = selection.textInside(text);
+    final newText = text.replaceRange(selection.start, selection.end, '$openTag$selectedText$closeTag');
+    
+    _contentController.text = newText;
+    _contentController.selection = TextSelection.collapsed(
+      offset: selection.start + openTag.length + selectedText.length + closeTag.length,
+    );
+  }
+
+  void _exportNote() {
+    final String fullText = "${_titleController.text}\n\n${_contentController.text}";
+    Share.share(fullText, subject: '${_titleController.text}.md');
   }
 
   @override
@@ -52,6 +65,7 @@ class _EditorScreenState extends State<EditorScreen> {
       appBar: AppBar(
         title: Text(widget.id == null ? 'Новая заметка' : 'Редактирование'),
         actions: [
+          IconButton(icon: const Icon(Icons.sim_card_download), onPressed: _exportNote, tooltip: 'Экспорт'),
           DropdownButton<String>(
             value: _selectedCategory,
             underline: const SizedBox(),
@@ -65,10 +79,9 @@ class _EditorScreenState extends State<EditorScreen> {
           IconButton(
             icon: const Icon(Icons.check),
             onPressed: () {
-              final contentJson = jsonEncode(_quillController!.document.toDelta().toJson());
               Navigator.pop(context, {
                 'title': _titleController.text,
-                'contentDelta': contentJson,
+                'content': _contentController.text,
                 'category': _selectedCategory,
               });
             },
@@ -88,51 +101,53 @@ class _EditorScreenState extends State<EditorScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: quill.QuillEditor.basic(
-                controller: _quillController!,
-                focusNode: _editorFocusNode,
-                config: const quill.QuillEditorConfig(
-                  placeholder: 'Текст заметки...',
-                  autoFocus: false, // Отключаем автоматический фокус при входе
-                ),
+              child: TextField(
+                controller: _contentController,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(fontSize: 16),
+                decoration: const InputDecoration(hintText: 'Текст заметки...', border: InputBorder.none),
               ),
             ),
           ),
-          // Контейнер с гарантированным отображением элементов
+          // НАША СОБСТВЕННАЯ СТАБИЛЬНАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ
           Container(
-            color: const Color(0xFFF0F0F0), // Светло-серый контрастный фон панели инструментов для темной темы
+            color: const Color(0xFF333333), // Контрастный графитовый цвет полосы
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: quill.QuillSimpleToolbar(
-              controller: _quillController!,
-              config: quill.QuillSimpleToolbarConfig(
-                multiRowsDisplay: false,
-                showFontFamily: false,
-                showFontSize: false,
-                showSubscript: false,
-                showSuperscript: false,
-                showCodeBlock: false,
-                showAlignmentButtons: false,
-                showLink: false,
-                showSearchButton: false,
-                showInlineCode: false,
-                showUndo: true,
-                showRedo: true,
-                showBoldButton: true,
-                showItalicButton: true,
-                showBackgroundColorButton: true,
-                showListBullets: true,
-                showListNumbers: true,
-                showListCheck: true,
-                // Явно переопределяем цвета иконок для гарантированной видимости на светлом фоне
-                buttonOptions: quill.QuillSimpleToolbarButtonOptions(
-                  base: quill.QuillToolbarBaseButtonOptions(
-                    iconTheme: const quill.QuillIconTheme(
-                      iconButtonSelectedData: quill.IconButtonData(color: Colors.amber),      // Выбранные - желтые
-                      iconButtonUnselectedData: quill.IconButtonData(color: Colors.black87),  // Свободные кнопки - черные
-                    ),
-                  ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.format_bold, color: Colors.white), 
+                  onPressed: () => _insertMarkup('**', '**'),
+                  tooltip: 'Жирный',
                 ),
-              ),
+                IconButton(
+                  icon: const Icon(Icons.format_italic, color: Colors.white), 
+                  onPressed: () => _insertMarkup('*', '*'),
+                  tooltip: 'Курсив',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.border_color, color: Colors.white), 
+                  onPressed: () => _insertMarkup('<bg>', '</bg>'),
+                  tooltip: 'Маркер',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.format_list_bulleted, color: Colors.white), 
+                  onPressed: () => _insertMarkup('\n- ', ''),
+                  tooltip: 'Список',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.format_list_numbered, color: Colors.white), 
+                  onPressed: () => _insertMarkup('\n1. ', ''),
+                  tooltip: 'Нумерация',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.check_box_outlined, color: Colors.white), 
+                  onPressed: () => _insertMarkup('\n[ ] ', ''),
+                  tooltip: 'Чекбокс',
+                ),
+              ],
             ),
           ),
         ],
