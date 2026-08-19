@@ -25,12 +25,17 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
+      - name: Force Android 16 (API 36) via Gradle properties
+        # Это официальный глобальный способ управления версиями SDK во Flutter 3.47+
+        run: |
+          echo "flutter.compileSdkVersion=36" >> android/gradle.properties
+          echo "flutter.targetSdkVersion=36" >> android/gradle.properties
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK (Force Android 16 SDK)
-        # Официальный нативный флаг Flutter принудительно соберет приложение под API 36 без правок кода
-        run: flutter build apk --release --compile-sdk-version=36 --target-sdk-version=36
+      - name: Build APK
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
