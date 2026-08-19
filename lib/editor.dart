@@ -31,7 +31,8 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  void _insertMarkup(String openTag, String closeTag) {
+  // Общая функция для вставки обычных стилей (жирный, курсив, маркер)
+  void _insertStyle(String openTag, String closeTag) {
     final text = _contentController.text;
     final selection = _contentController.selection;
 
@@ -52,7 +53,47 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  // НАВНАЯ И БЕЗОПАСНАЯ ЛОГИКА КОПИРОВАНИЯ В БУФЕР ТЕЛЕФОНА
+  // УМНАЯ ЛОГИКА ДЛЯ СПИСКОВ И КНОПОК НАВЕРХУ КЛАВИАТУРЫ
+  void _insertBlockStructure(String type) {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    final int cursorPosition = selection.baseOffset == -1 ? text.length : selection.baseOffset;
+
+    // Определяем, находится ли курсор в начале новой строки
+    bool isStartOfLine = cursorPosition == 0 || text.codeUnitAt(cursorPosition - 1) == 10; // 10 — код символа \n
+    String prefix = isStartOfLine ? "" : "\n";
+
+    String marker = "";
+    if (type == 'bullet') {
+      marker = "• ";
+    } else if (type == 'checkbox') {
+      marker = "[ ] ";
+    } else if (type == 'number') {
+      // Умный поиск предыдущего номера строки для автоинкремента
+      int nextNumber = 1;
+      final textBeforeCursor = text.substring(0, cursorPosition);
+      final lines = textBeforeCursor.split('\n');
+      if (lines.isNotEmpty) {
+        for (int i = lines.length - 1; i >= 0; i--) {
+          final line = lines[i].trim();
+          if (line.isEmpty) continue;
+          final match = RegExp(r'^(\d+)\.').firstMatch(line);
+          if (match != null) {
+            nextNumber = int.parse(match.group(1)!) + 1;
+            break;
+          }
+        }
+      }
+      marker = "$nextNumber. ";
+    }
+
+    final String insertion = "$prefix$marker";
+    final newText = text.replaceRange(cursorPosition, cursorPosition, insertion);
+    
+    _contentController.text = newText;
+    _contentController.selection = TextSelection.collapsed(offset: cursorPosition + insertion.length);
+  }
+
   void _copyToClipboard() {
     final String fullText = "${_titleController.text}\n\n${_contentController.text}";
     Clipboard.setData(ClipboardData(text: fullText)).then((_) {
@@ -115,18 +156,19 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ),
           ),
+          // ПАНЕЛЬ ИНСТРУМЕНТОВ
           Container(
             color: const Color(0xFF333333),
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertMarkup('**', '**')),
-                IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertMarkup('*', '*')),
-                IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertMarkup('<bg>', '</bg>')),
-                IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertMarkup('\n- ', '')),
-                IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertMarkup('\n1. ', '')),
-                IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertMarkup('\n[ ] ', '')),
+                IconButton(icon: const Icon(Icons.format_bold, color: Colors.white), onPressed: () => _insertStyle('**', '**')),
+                IconButton(icon: const Icon(Icons.format_italic, color: Colors.white), onPressed: () => _insertStyle('*', '*')),
+                IconButton(icon: const Icon(Icons.border_color, color: Colors.white), onPressed: () => _insertStyle('==', '==')), // Чистый Markdown маркер
+                IconButton(icon: const Icon(Icons.format_list_bulleted, color: Colors.white), onPressed: () => _insertBlockStructure('bullet')),
+                IconButton(icon: const Icon(Icons.format_list_numbered, color: Colors.white), onPressed: () => _insertBlockStructure('number')),
+                IconButton(icon: const Icon(Icons.check_box_outlined, color: Colors.white), onPressed: () => _insertBlockStructure('checkbox')),
               ],
             ),
           ),
