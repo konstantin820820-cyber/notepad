@@ -25,10 +25,43 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
-      - name: Inject Android 16 (API 36) into local.properties
+      - name: Overwrite build.gradle.kts with Force API 36
         run: |
-          echo "flutter.compileSdkVersion=36" >> android/local.properties
-          echo "flutter.targetSdkVersion=36" >> android/local.properties
+          cat << 'EOF' > android/app/build.gradle.kts
+          plugins {
+              id("com.android.application")
+              id("kotlin-android")
+              id("dev.flutter.flutter-gradle-plugin")
+          }
+
+          android {
+              namespace = "com.example.local_notepad"
+              compileSdk = 36
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {
+                  applicationId = "com.example.local_notepad"
+                  minSdk = 21
+                  targetSdk = 36
+                  versionCode = 1
+                  versionName = "1.0.0"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.getByName("debug")
+                  }
+              }
+          }
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
