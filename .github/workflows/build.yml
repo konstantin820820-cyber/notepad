@@ -25,7 +25,7 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
-      - name: Overwrite build.gradle.kts with Force API 36
+      - name: Overwrite build.gradle.kts with Modern AGP 9.0 DSL
         run: |
           cat << 'EOF' > android/app/build.gradle.kts
           plugins {
@@ -34,7 +34,7 @@ jobs:
               id("dev.flutter.flutter-gradle-plugin")
           }
 
-          android {
+          configure<com.android.build.api.dsl.ApplicationExtension> {
               namespace = "com.example.local_notepad"
               compileSdk = 36
 
@@ -43,8 +43,11 @@ jobs:
                   targetCompatibility = JavaVersion.VERSION_17
               }
 
-              kotlinOptions {
-                  jvmTarget = "17"
+              // Используем новый современный синтаксис вместо устаревшего kotlinOptions
+              extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+                  compilerOptions {
+                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                  }
               }
 
               defaultConfig {
@@ -56,7 +59,7 @@ jobs:
               }
 
               buildTypes {
-                  release {
+                  getByName("release") {
                       signingConfig = signingConfigs.getByName("debug")
                   }
               }
