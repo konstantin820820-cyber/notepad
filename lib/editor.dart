@@ -18,7 +18,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   quill.QuillController? _quillController;
-  final FocusNode _editorFocusNode = FocusNode(); // Узел фокуса для связи панели и текста
+  final FocusNode _editorFocusNode = FocusNode();
   String _selectedCategory = 'Личное';
 
   @override
@@ -89,7 +89,7 @@ class _EditorScreenState extends State<EditorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: quill.QuillEditor.basic(
                 controller: _quillController!,
-                focusNode: _editorFocusNode, // Передаем фокус
+                focusNode: _editorFocusNode,
                 config: const quill.QuillEditorConfig(
                   placeholder: 'Текст заметки...',
                   autoFocus: true,
@@ -97,28 +97,40 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ),
           ),
-          // Профессиональная панель, привязанная к фокусу редактора
-          quill.QuillSimpleToolbar(
-            controller: _quillController!,
-            config: const quill.QuillSimpleToolbarConfig(
-              multiRowsDisplay: false,
-              showFontFamily: false,
-              showFontSize: false,
-              showSubscript: false,
-              showSuperscript: false,
-              showCodeBlock: false,
-              showAlignmentButtons: false,
-              showLink: false,
-              showSearchButton: false,
-              showInlineCode: false,
-              showUndo: true,
-              showRedo: true,
-              showBoldButton: true,
-              showItalicButton: true,
-              showBackgroundColorButton: true,
-              showListBullets: true,
-              showListNumbers: true,
-              showListCheck: true,
+          // Панель в контрастном контейнере с принудительной покраской скрытых иконок
+          Container(
+            color: const Color(0xFF2C2C2C), // Фиксированный графитовый фон
+            child: quill.QuillSimpleToolbar(
+              controller: _quillController!,
+              config: quill.QuillSimpleToolbarConfig(
+                multiRowsDisplay: false,
+                showFontFamily: false,
+                showFontSize: false,
+                showSubscript: false,
+                showSuperscript: false,
+                showCodeBlock: false,
+                showAlignmentButtons: false,
+                showLink: false,
+                showSearchButton: false,
+                showInlineCode: false,
+                showUndo: true,
+                showRedo: true,
+                showBoldButton: true,
+                showItalicButton: true,
+                showBackgroundColorButton: true,
+                showListBullets: true,
+                showListNumbers: true,
+                showListCheck: true,
+                // Задаем принудительно белый цвет для всех иконок, чтобы они проявились
+                buttonOptions: quill.QuillSimpleToolbarButtonOptions(
+                  base: quill.QuillToolbarBaseButtonOptions(
+                    iconTheme: const quill.QuillIconTheme(
+                      iconButtonSelectedData: quill.IconButtonData(color: Colors.amber), // Выбранные - желтые
+                      iconButtonUnselectedData: quill.IconButtonData(color: Colors.white), // Обычные - белые
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
