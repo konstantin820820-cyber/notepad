@@ -25,6 +25,11 @@ jobs:
       - name: Recreate platform folders
         run: flutter create --platforms=android .
 
+      - name: Force Android 14 API
+        run: |
+          echo "flutter.compileSdkVersion=34" >> android/local.properties
+          echo "flutter.targetSdkVersion=34" >> android/local.properties
+
       - name: Install dependencies
         run: flutter pub get
 
