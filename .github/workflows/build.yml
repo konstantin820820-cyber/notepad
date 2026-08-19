@@ -22,30 +22,8 @@ jobs:
         with:
           flutter-version: '3.47.0'
 
-      - name: Force Global Flutter SDK Config to API 36
-        # Этот шаг принудительно меняет базовые настройки внутри самого скачанного Flutter SDK на сервере
-        run: |
-          FLUTTER_APP_GRADLE="$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/com/flutter/gradle/plugin/FlutterPlugin.kt"
-          if [ -f "$FLUTTER_APP_GRADLE" ]; then
-            sed -i 's/compileSdk = .*/compileSdk = 36/g' "$FLUTTER_APP_GRADLE" || true
-            sed -i 's/targetSdk = .*/targetSdk = 36/g' "$FLUTTER_APP_GRADLE" || true
-          fi
-          
-          # Запасной вариант для старого формата конфигурации инструментов
-          FLUTTER_TOOLS_GRADLE="$FLUTTER_ROOT/packages/flutter_tools/gradle/flutter.gradle"
-          if [ -f "$FLUTTER_TOOLS_GRADLE" ]; then
-            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' "$FLUTTER_TOOLS_GRADLE" || true
-            sed -i 's/targetSdkVersion .*/targetSdkVersion 36/g' "$FLUTTER_TOOLS_GRADLE" || true
-          fi
-
       - name: Recreate platform folders
         run: flutter create --platforms=android .
-
-      - name: Patch App Build File Directly
-        # Намертво вшиваем API 36 в свежесгенерированный файл приложения
-        run: |
-          sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle.kts || true
-          sed -i 's/targetSdk = .*/targetSdk = 36/g' android/app/build.gradle.kts || true
 
       - name: Install dependencies
         run: flutter pub get
