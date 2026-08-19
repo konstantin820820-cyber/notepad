@@ -19,7 +19,10 @@ class LocalNotesApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('ru', 'RU')],
       locale: const Locale('ru', 'RU'),
-      theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark)),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark),
+      ),
       home: const HomeScreen(),
     );
   }
@@ -97,42 +100,101 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: _categories.map((category) {
           final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
           
-          return ReorderableList(
-            itemCount: filteredNotes.length,
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                if (newIndex > oldIndex) newIndex -= 1;
-                final item = _notes.removeAt(_notes.indexOf(filteredNotes[oldIndex]));
-                _notes.insert(_notes.indexOf(filteredNotes[newIndex]), item);
-              });
-              _saveData();
-            },
-            itemBuilder: (context, index) {
-              final note = filteredNotes[index];
-              return Card(
-                key: ValueKey(note.id),
-                margin: const EdgeInsets.all(8),
-                child: ListTile(
-                  title: Text(note.title.isEmpty ? 'Без названия' : note.title),
-                  subtitle: Text(note.category, style: const TextStyle(color: Colors.amber, fontSize: 12)),
-                  trailing: const Icon(Icons.drag_handle),
-                  onTap: () async {
-                    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)));
-                    if (result != null) {
+          if (filteredNotes.isEmpty) {
+            return const Center(child: Text('Здесь пока пусто', style: TextStyle(color: Colors.white54)));
+          }
+
+          // Полноценная двухколоночная сетка с поддержкой перетаскивания плиток жестами
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.1,
+              ),
+              itemCount: filteredNotes.length,
+              itemBuilder: (context, index) {
+                final note = filteredNotes[index];
+                return LongPressDraggable<Note>(
+                  data: note,
+                  feedback: SizedBox(
+                    width: MediaQuery.of(context).size.width / 2.2,
+                    height: 100,
+                    child: Card(elevation: 4, child: Center(child: Text(note.title, style: const TextStyle(fontWeight: FontWeight.bold)))),
+                  ),
+                  childWhenDragging: Container(color: Colors.transparent),
+                  child: DragTarget<Note>(
+                    onAcceptWithDetails: (details) {
+                      final draggedNote = details.data;
                       setState(() {
-                        int idx = _notes.indexWhere((n) => n.id == note.id);
-                        if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentJson: result['contentJson'], category: result['category']);
+                        final int oldIdx = _notes.indexOf(draggedNote);
+                        final int newIdx = _notes.indexOf(note);
+                        if (oldIdx != -1 && newIdx != -1) {
+                          final item = _notes.removeAt(oldIdx);
+                          _notes.insert(newIdx, item);
+                        }
                       });
                       _saveData();
-                    }
-                  },
-                  onLongPress: () {
-                    setState(() { _notes.removeWhere((n) => n.id == note.id); });
-                    _saveData();
-                  },
-                ),
-              );
-            },
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return GestureDetector(
+                        onTap: () async {
+                          final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)));
+                          if (result != null) {
+                            setState(() {
+                              int idx = _notes.indexWhere((n) => n.id == note.id);
+                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentJson: result['contentJson'], category: result['category']);
+                            });
+                            _saveData();
+                          }
+                        },
+                        onLongPress: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Указать категорию или удалить?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() { _notes.removeWhere((n) => n.id == note.id); });
+                                    _saveData();
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                ),
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Card(
+                          elevation: 2,
+                          color: candidateData.isNotEmpty ? Colors.amber.withOpacity(0.2) : null,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(note.title.isEmpty ? 'Без названия' : note.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                                  child: Text(note.category, style: const TextStyle(fontSize: 10, color: Colors.amber)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           );
         }).toList(),
       ),
@@ -172,57 +234,3 @@ class _EditorScreenState extends State<EditorScreen> {
     if (widget.note != null) {
       _titleController.text = widget.note!.title;
       _selectedCategory = widget.note!.category;
-      final doc = ParchmentDocument.fromJson(jsonDecode(widget.note!.contentJson));
-      _controller = FleatherController(document: doc);
-    } else {
-      _controller = FleatherController();
-      _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Заметка'),
-        actions: [
-          DropdownButton<String>(
-            value: _selectedCategory,
-            items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-            onChanged: (val) { if (val != null) setState(() => _selectedCategory = val); },
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () {
-              final jsonText = jsonEncode(_controller!.document.toJson());
-              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonText, 'category': _selectedCategory});
-            },
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(controller: _titleController, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none)),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
-            ),
-          ),
-          // Родная встроенная горизонтальная панель Fleather без ошибок типов кнопок
-          FleatherToolbar.basic(controller: _controller!),
-        ],
-      ),
-    );
-  }
-}
