@@ -13,7 +13,6 @@ class LocalNotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Локальный Блокнот',
-      // Полная русификация системных контекстных меню (копировать/вставить)
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -33,11 +32,10 @@ class LocalNotesApp extends StatelessWidget {
   }
 }
 
-// Обновленная модель заметки с поддержкой тем и сложного форматирования
 class Note {
   String id;
   String title;
-  String contentDelta; // Хранит стили текста (жирный, цвет и т.д.) в формате JSON
+  String contentDelta;
   String category;
 
   Note({
@@ -73,7 +71,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   List<Note> _notes = [];
-  // Список наших тем (категорий)
   final List<String> _categories = ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
   TabController? _tabController;
 
@@ -101,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     await prefs.setString('local_notes_v2', encodedList);
   }
 
-  // Фильтрация заметок по выбранной вкладке-теме
   List<Note> _getFilteredNotes(String category) {
     if (category == 'Все') return _notes;
     return _notes.where((note) => note.category == category).toList();
@@ -156,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     itemCount: filteredNotes.length,
                     itemBuilder: (context, index) {
                       final note = filteredNotes[index];
-                      // Простой парсинг для превью текста в плитке
                       String previewText = "";
                       try {
                         final List<dynamic> json = jsonDecode(note.contentDelta);
@@ -167,7 +162,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                       return GestureDetector(
                         onTap: () async {
-                          // ОТКРЫТИЕ НА РЕДАКТИРОВАНИЕ
                           final Note? updatedNote = await Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)),
@@ -180,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             _saveNotes();
                           }
                         },
-                        onLongPress: () => _deleteNote(note), // Удаление долгим тапом
+                        onLongPress: () => _deleteNote(note),
                         child: Card(
                           elevation: 2,
                           child: Padding(
@@ -224,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          // СОЗДАНИЕ НОВОЙ ЗАМЕТКИ
           final Note? newNote = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)),
@@ -271,3 +264,18 @@ class _EditorScreenState extends State<EditorScreen> {
       if (widget.categories.contains('Личное')) {
         _selectedCategory = 'Личное';
       } else {
+        _selectedCategory = widget.categories.first;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.note == null ? 'Новая заметка' : 'Редактирование'),
+        actions: [
+          DropdownButton<String>(
+            value: _selectedCategory,
+            underline: const SizedBox(),
+            items: widget.categories.where((cat) => cat != 'Все').map((String value) {
