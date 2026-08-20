@@ -168,154 +168,6 @@ class _MainScreenState extends State<MainScreen> {
       },
     );
   }
-    
-                },
-              ),
-            );
-          }).toList(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)),
-            );
-            if (result != null) {
-              setState(() {
-                _notes.add(Note(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: result['title'],
-                  contentJson: result['contentJson'],
-                  category: result['category'],
-                ));
-              });
-              _saveData();
-            }
-          },
-          child: const Icon(Icons.add),
-        ),
-      ),
-    );
-    class EditorScreen extends StatefulWidget {
-  final Note? note;
-  final List<String> categories;
-  const EditorScreen({super.key, this.note, required this.categories});
-
-  @override
-  State<EditorScreen> createState() => _EditorScreenState();
-}
-
-class _EditorScreenState extends State<EditorScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  FleatherController? _controller;
-  final FocusNode _focusNode = FocusNode();
-  String _selectedCategory = 'Личное';
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.note != null) {
-      _titleController.text = widget.note!.title;
-      _selectedCategory = widget.note!.category;
-      final doc = ParchmentDocument.fromJson(jsonDecode(widget.note!.contentJson));
-      _controller = FleatherController(document: doc);
-    } else {
-      _controller = FleatherController();
-      _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _exportToTxtFile(BuildContext context, String title, String plainText) async {
-    if (Platform.isAndroid) {
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        await Permission.manageExternalStorage.request();
-      }
-    }
-
-    try {
-      Directory directory = Directory('/storage/emulated/0/Download');
-      if (!await directory.exists()) {
-        directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-      }
-
-      String safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      if (safeTitle.trim().isEmpty) safeTitle = "Заметка_${DateTime.now().millisecondsSinceEpoch}";
-
-      String filePath = '${directory.path}/$safeTitle.txt';
-      File file = File(filePath);
-
-      await file.writeAsString("$title\n\n$plainText");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Сохранено в Загрузки: $safeTitle.txt')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка экспорта: $e')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Заметка'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: 'Экспорт в .txt',
-            onPressed: () {
-              _exportToTxtFile(
-                context,
-                _titleController.text,
-                _controller!.document.toPlainText(),
-              );
-            },
-          ),
-          DropdownButton<String>(
-            value: _selectedCategory,
-            items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-            onChanged: (val) { if (val != null) setState(() => _selectedCategory = val); },
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () {
-              final jsonText = jsonEncode(_controller!.document.toJson());
-              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonText, 'category': _selectedCategory});
-            },
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -497,6 +349,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 }
+
 class EditorScreen extends StatefulWidget {
   final Note? note;
   final List<String> categories;
@@ -553,59 +406,6 @@ class _EditorScreenState extends State<EditorScreen> {
       String filePath = '${directory.path}/$safeTitle.txt';
       File file = File(filePath);
 
-      await file.writeAsString("$title\n\n$plainText");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Сохранено в Загрузки: $safeTitle.txt')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка экспорта: $e')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Заметка'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: 'Экспорт в .txt',
-            onPressed: () {
-              _exportToTxtFile(
-                context,
-                _titleController.text,
-                _controller!.document.toPlainText(),
-              );
-            },
-          ),
-          DropdownButton<String>(
-            value: _selectedCategory,
-            items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-            onChanged: (val) { if (val != null) setState(() => _selectedCategory = val); },
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () {
-              final jsonText = jsonEncode(_controller!.document.toJson());
-              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonText, 'category': _selectedCategory});
-            },
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
-            ),
-          ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -616,4 +416,4 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
   }
-}
+} // <--- Это самая последняя строчка в файле!
