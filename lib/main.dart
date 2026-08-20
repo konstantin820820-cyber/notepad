@@ -1,4 +1,3 @@
-import 'package:parchment_to_html/parchment_to_html.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -201,7 +200,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void _saveToHtmlFile() async {
     try {
       final String htmlContent = parchmentToHtml(_controller!.document);
-      final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
+      final String htmlContent = noteroHtml.encode(_controller!.document.toDelta());
       final directory = Directory('/storage/emulated/0/Download');
       final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
       final file = File('${targetDir.path}/$fileName.html');
