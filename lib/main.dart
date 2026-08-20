@@ -1439,15 +1439,12 @@ class _HomeScreenState extends State<HomeScreen>
 // EDITOR
 // ============================================================
 
-class EditorScreen
-    extends StatefulWidget {
+class EditorScreen extends StatefulWidget {
   final Note? note;
 
-  final List<String>
-      categories;
+  final List<String> categories;
 
-  final String?
-      initialCategory;
+  final String? initialCategory;
 
   const EditorScreen({
     super.key,
@@ -1457,28 +1454,24 @@ class EditorScreen
   });
 
   @override
-  State<EditorScreen> createState() =>
-      _EditorScreenState();
+  State<EditorScreen> createState() => _EditorScreenState();
 }
 
 // ============================================================
 // EDITOR STATE
 // ============================================================
 
-class _EditorScreenState
-    extends State<EditorScreen> {
-  final TextEditingController
-      _titleController =
+class _EditorScreenState extends State<EditorScreen> {
+  final TextEditingController _titleController =
       TextEditingController();
 
-  final FocusNode _focusNode =
-      FocusNode();
+  final FocusNode _focusNode = FocusNode();
 
-  FleatherController?
-      _controller;
+  FleatherController? _controller;
 
-  late String
-      _selectedCategory;
+  late String _selectedCategory;
+
+  bool _saving = false;
 
   // ==========================================================
   // INIT
@@ -1488,70 +1481,103 @@ class _EditorScreenState
   void initState() {
     super.initState();
 
+    _selectedCategory = _getInitialCategory();
+
+    _createController();
+  }
+
+  // ==========================================================
+  // INITIAL CATEGORY
+  // ==========================================================
+
+  String _getInitialCategory() {
+    final availableCategories = widget.categories
+        .where((category) => category != 'Все')
+        .toList();
+
     if (widget.note != null) {
-      _titleController.text =
-          widget.note!.title;
+      final noteCategory = widget.note!.category;
 
-      _selectedCategory =
-          widget.note!.category;
+      if (availableCategories.contains(noteCategory)) {
+        return noteCategory;
+      }
+    }
 
-      try {
-        final decoded =
-            jsonDecode(
-          widget.note!
-              .contentJson,
+    if (widget.initialCategory != null &&
+        availableCategories.contains(widget.initialCategory)) {
+      return widget.initialCategory!;
+    }
+
+    if (availableCategories.contains('Личное')) {
+      return 'Личное';
+    }
+
+    if (availableCategories.isNotEmpty) {
+      return availableCategories.first;
+    }
+
+    return 'Личное';
+  }
+
+  // ==========================================================
+  // CREATE FLEATHER CONTROLLER
+  // ==========================================================
+
+  void _createController() {
+    // ----------------------------------------------------------
+    // НОВАЯ ЗАМЕТКА
+    // ----------------------------------------------------------
+
+    if (widget.note == null) {
+      _controller = FleatherController(
+        document: ParchmentDocument(),
+      );
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // СУЩЕСТВУЮЩАЯ ЗАМЕТКА
+    // ----------------------------------------------------------
+
+    _titleController.text = widget.note!.title;
+
+    try {
+      final rawJson = widget.note!.contentJson;
+
+      if (rawJson.trim().isEmpty) {
+        _controller = FleatherController(
+          document: ParchmentDocument(),
         );
+        return;
+      }
 
-        _controller =
-            FleatherController(
-          document:
-              ParchmentDocument
-                  .fromJson(
+      final decoded = jsonDecode(rawJson);
+
+      if (decoded is List) {
+        _controller = FleatherController(
+          document: ParchmentDocument.fromJson(
             decoded,
           ),
         );
-      } catch (_) {
-        _controller =
-            FleatherController();
-      }
-    } else {
-      _controller =
-          FleatherController();
-
-      final availableCategories =
-          widget.categories
-              .where(
-                (cat) =>
-                    cat != 'Все',
-              )
-              .toList();
-
-      if (widget.initialCategory !=
-              null &&
-          availableCategories
-              .contains(
-            widget.initialCategory,
-          )) {
-        _selectedCategory =
-            widget.initialCategory!;
-      } else if (availableCategories
-          .contains('Личное')) {
-        _selectedCategory =
-            'Личное';
-      } else if (availableCategories
-          .isNotEmpty) {
-        _selectedCategory =
-            availableCategories
-                .first;
       } else {
-        _selectedCategory =
-            'Личное';
+        _controller = FleatherController(
+          document: ParchmentDocument(),
+        );
       }
+    } catch (e) {
+      debugPrint(
+        'Ошибка загрузки содержимого заметки: $e',
+      );
+
+      _controller = FleatherController(
+        document: ParchmentDocument(),
+      );
     }
   }
 
   // ==========================================================
-  // SAVE NOTE
+  // SAVE NOTE TO APP
   // ==========================================================
 
   void _saveNote() {
@@ -1559,160 +1585,209 @@ class _EditorScreenState
       return;
     }
 
-    final contentJson =
-        jsonEncode(
-      _controller!
-          .document
-          .toJson(),
-    );
+    if (_saving) {
+      return;
+    }
 
-    Navigator.pop(
-      context,
-      {
-        'title':
-            _titleController
-                .text
-                .trim(),
+    setState(() {
+      _saving = true;
+    });
 
-        'contentJson':
-            contentJson,
+    try {
+      final document = _controller!.document;
 
-        'category':
-            _selectedCategory,
-      },
-    );
+      final documentJson = document.toJson();
+
+      final contentJson = jsonEncode(
+        documentJson,
+      );
+
+      final title = _titleController.text.trim();
+
+      Navigator.pop(
+        context,
+        <String, dynamic>{
+          'title': title,
+          'contentJson': contentJson,
+          'category': _selectedCategory,
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _saving = false;
+      });
+
+      _showMessage(
+        'Ошибка сохранения заметки:\n$e',
+      );
+    }
   }
 
   // ==========================================================
-  // MARKDOWN ESCAPE
+  // GET PLAIN TEXT
+  //
+  // Это принципиально важная часть.
+  //
+  // Мы НЕ пытаемся получать текст через наш старый
+  // ручной разбор Delta.
+  //
+  // Parchment сам знает, где находится текст документа.
   // ==========================================================
 
-  String _escapeMarkdownText(
-    String text,
-  ) {
+  String _getPlainText() {
+    if (_controller == null) {
+      return '';
+    }
+
+    try {
+      return _controller!.document.toPlainText();
+    } catch (e) {
+      debugPrint(
+        'Ошибка получения plain text: $e',
+      );
+
+      return '';
+    }
+  }
+
+  // ==========================================================
+  // ESCAPE MARKDOWN
+  // ==========================================================
+
+  String _escapeMarkdownText(String text) {
     return text
-        .replaceAll(
-          r'\',
-          r'\\',
-        )
-        .replaceAll(
-          '*',
-          r'\*',
-        )
-        .replaceAll(
-          '_',
-          r'\_',
-        )
-        .replaceAll(
-          '`',
-          r'\`',
-        )
-        .replaceAll(
-          '[',
-          r'\[',
-        )
-        .replaceAll(
-          ']',
-          r'\]',
-        );
+        .replaceAll(r'\', r'\\')
+        .replaceAll('*', r'\*')
+        .replaceAll('_', r'\_')
+        .replaceAll('`', r'\`')
+        .replaceAll('[', r'\[')
+        .replaceAll(']', r'\]');
   }
 
   // ==========================================================
-  // MARKDOWN INLINE
+  // FORMAT INLINE
   // ==========================================================
 
   String _formatInlineMarkdown(
     String text,
-    Map<String, dynamic>
-        attributes,
+    Map<String, dynamic> attributes,
   ) {
     if (text.isEmpty) {
       return '';
     }
 
-    String result =
-        _escapeMarkdownText(
-      text,
-    );
+    String result = _escapeMarkdownText(text);
 
-    final link =
-        attributes['link'];
+    // --------------------------------------------------------
+    // LINK
+    // --------------------------------------------------------
+
+    final link = attributes['link'];
 
     if (link != null) {
-      result =
-          '[$result](${link.toString()})';
+      result = '[$result](${link.toString()})';
     }
 
-    if (attributes['code'] ==
-        true) {
-      result =
-          '`$result`';
+    // --------------------------------------------------------
+    // CODE
+    // --------------------------------------------------------
+
+    if (attributes['code'] == true) {
+      result = '`$result`';
     }
 
-    if (attributes['bold'] ==
-        true) {
-      result =
-          '**$result**';
+    // --------------------------------------------------------
+    // BOLD
+    // --------------------------------------------------------
+
+    if (attributes['bold'] == true) {
+      result = '**$result**';
     }
 
-    if (attributes['italic'] ==
-        true) {
-      result =
-          '*$result*';
+    // --------------------------------------------------------
+    // ITALIC
+    // --------------------------------------------------------
+
+    if (attributes['italic'] == true) {
+      result = '*$result*';
     }
 
-    if (attributes['strike'] ==
-        true) {
-      result =
-          '~~$result~~';
+    // --------------------------------------------------------
+    // STRIKE
+    // --------------------------------------------------------
+
+    if (attributes['strike'] == true ||
+        attributes['strikethrough'] == true) {
+      result = '~~$result~~';
+    }
+
+    // --------------------------------------------------------
+    // UNDERLINE
+    //
+    // В чистом Markdown стандартного underline нет.
+    // Поэтому используем HTML.
+    // --------------------------------------------------------
+
+    if (attributes['underline'] == true) {
+      result = '<u>$result</u>';
     }
 
     return result;
   }
 
   // ==========================================================
-  // BLOCK MARKDOWN
+  // BLOCK FORMAT
   // ==========================================================
 
-  String _makeMarkdownBlock(
+  String _formatMarkdownBlock(
     String text,
-    Map<String, dynamic>
-        attributes,
+    Map<String, dynamic> attributes,
   ) {
-    final trimmed =
-        text.trim();
+    final trimmed = text.trim();
 
-    if (attributes['header'] ==
-        1) {
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    // --------------------------------------------------------
+    // HEADER
+    // --------------------------------------------------------
+
+    final header = attributes['header'];
+
+    if (header == 1) {
       return '# $trimmed';
     }
 
-    if (attributes['header'] ==
-        2) {
+    if (header == 2) {
       return '## $trimmed';
     }
 
-    if (attributes['header'] ==
-        3) {
+    if (header == 3) {
       return '### $trimmed';
     }
 
-    if (attributes['blockquote'] ==
-        true) {
-      if (trimmed.isEmpty) {
-        return '>';
-      }
+    // --------------------------------------------------------
+    // BLOCKQUOTE
+    // --------------------------------------------------------
 
+    if (attributes['blockquote'] == true) {
       return '> $trimmed';
     }
 
-    if (attributes['list'] ==
-        'bullet') {
+    // --------------------------------------------------------
+    // BULLET LIST
+    // --------------------------------------------------------
+
+    if (attributes['list'] == 'bullet') {
       return '- $trimmed';
     }
 
-    if (attributes['list'] ==
-        'ordered') {
+    // --------------------------------------------------------
+    // ORDERED LIST
+    // --------------------------------------------------------
+
+    if (attributes['list'] == 'ordered') {
       return '1. $trimmed';
     }
 
@@ -1722,12 +1797,14 @@ class _EditorScreenState
   // ==========================================================
   // DELTA -> MARKDOWN
   //
-  // Здесь специально не используется split('\n')
-  // для всей операции целиком.
+  // Здесь мы НЕ используем этот метод для извлечения текста.
   //
-  // Мы последовательно собираем строки Delta.
-  // Атрибуты самого символа перевода строки
-  // используются как атрибуты блока.
+  // Текст сначала гарантированно берётся через:
+  //
+  // document.toPlainText()
+  //
+  // Delta используется только для попытки сохранить
+  // форматирование.
   // ==========================================================
 
   String _deltaToMarkdown() {
@@ -1735,161 +1812,194 @@ class _EditorScreenState
       return '';
     }
 
-    final delta =
-        _controller!
-            .document
-            .toDelta()
-            .toJson();
+    final document = _controller!.document;
 
-    final output =
-        StringBuffer();
+    // --------------------------------------------------------
+    // САМОЕ ГЛАВНОЕ:
+    //
+    // Получаем настоящий текст документа напрямую.
+    // --------------------------------------------------------
 
-    final currentLine =
-        StringBuffer();
+    final plainText = document.toPlainText();
 
-    Map<String, dynamic>
-        currentBlockAttributes =
+    debugPrint(
+      'Markdown export plain text length: ${plainText.length}',
+    );
+
+    debugPrint(
+      'Markdown export plain text: $plainText',
+    );
+
+    // --------------------------------------------------------
+    // Если текста нет, пробуем всё равно получить Delta.
+    // --------------------------------------------------------
+
+    if (plainText.trim().isEmpty) {
+      return '';
+    }
+
+    final delta = document.toDelta().toJson();
+
+    final output = StringBuffer();
+
+    final currentLine = StringBuffer();
+
+    Map<String, dynamic> currentAttributes =
         <String, dynamic>{};
 
-    bool wroteAnything = false;
+    void writeCurrentLine() {
+      final text = currentLine.toString();
 
-    void writeLine(
-      String text,
-      Map<String, dynamic>
-          blockAttributes,
-    ) {
-      final line =
-          _makeMarkdownBlock(
-        text,
-        blockAttributes,
-      );
+      if (text.isEmpty) {
+        output.write('\n');
+      } else {
+        output.write(
+          _formatMarkdownBlock(
+            text,
+            currentAttributes,
+          ),
+        );
 
-      output.write(line);
-      output.write('\n\n');
+        output.write('\n');
+      }
 
-      wroteAnything = true;
+      currentLine.clear();
+
+      currentAttributes = <String, dynamic>{};
     }
+
+    // --------------------------------------------------------
+    // Разбираем Delta.
+    // --------------------------------------------------------
 
     for (final rawOperation in delta) {
       if (rawOperation is! Map) {
         continue;
       }
 
-      if (!rawOperation.containsKey(
-        'insert',
-      )) {
+      if (!rawOperation.containsKey('insert')) {
         continue;
       }
 
-      final insert =
-          rawOperation['insert'];
+      final insert = rawOperation['insert'];
 
       final attributes =
-          rawOperation['attributes']
-                  is Map
+          rawOperation['attributes'] is Map
               ? Map<String, dynamic>.from(
-                  rawOperation[
-                      'attributes'],
+                  rawOperation['attributes'] as Map,
                 )
               : <String, dynamic>{};
 
-      // --------------------------------------------------------
+      // ------------------------------------------------------
       // TEXT
-      // --------------------------------------------------------
+      // ------------------------------------------------------
 
       if (insert is String) {
-        String buffer =
-            '';
+        final parts = insert.split('\n');
 
-        for (int i = 0;
-            i < insert.length;
-            i++) {
-          final char =
-              insert[i];
+        for (int i = 0; i < parts.length; i++) {
+          final part = parts[i];
 
-          if (char == '\n') {
-            if (buffer.isNotEmpty) {
-              currentLine.write(
-                _formatInlineMarkdown(
-                  buffer,
-                  attributes,
-                ),
-              );
+          if (part.isNotEmpty) {
+            currentLine.write(
+              _formatInlineMarkdown(
+                part,
+                attributes,
+              ),
+            );
+          }
 
-              buffer = '';
-            }
-
-            currentBlockAttributes =
+          if (i < parts.length - 1) {
+            currentAttributes =
                 Map<String, dynamic>.from(
               attributes,
             );
 
-            writeLine(
-              currentLine.toString(),
-              currentBlockAttributes,
-            );
-
-            currentLine.clear();
-
-            currentBlockAttributes =
-                <String, dynamic>{};
-          } else {
-            buffer += char;
+            writeCurrentLine();
           }
         }
 
-        // Остаток текста после последнего \n.
-        if (buffer.isNotEmpty) {
-          currentLine.write(
-            _formatInlineMarkdown(
-              buffer,
-              attributes,
-            ),
-          );
-        }
+        continue;
       }
 
-      // --------------------------------------------------------
+      // ------------------------------------------------------
       // EMBED / IMAGE
-      // --------------------------------------------------------
+      // ------------------------------------------------------
 
-      else if (insert is Map) {
-        if (insert.containsKey(
-          'image',
-        )) {
-          final image =
-              insert['image']
-                  .toString();
+      if (insert is Map) {
+        final image = insert['image'];
 
+        if (image != null) {
           currentLine.write(
-            '![Изображение]($image)',
+            '![Изображение](${image.toString()})',
           );
         }
       }
     }
 
-    // ----------------------------------------------------------
+    // --------------------------------------------------------
     // Последняя строка.
-    // ----------------------------------------------------------
+    // --------------------------------------------------------
 
     if (currentLine.isNotEmpty) {
-      writeLine(
-        currentLine.toString(),
-        currentBlockAttributes,
-      );
+      writeCurrentLine();
     }
 
-    // ----------------------------------------------------------
-    // Если документ практически пустой.
-    // ----------------------------------------------------------
+    var result = output.toString();
 
-    String result =
-        output.toString().trimRight();
+    // --------------------------------------------------------
+    // НОРМАЛИЗУЕМ ПУСТЫЕ СТРОКИ.
+    // --------------------------------------------------------
 
-    // Заголовок добавляем отдельно.
+    result = result
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+
+    // --------------------------------------------------------
+    // КРИТИЧЕСКАЯ ЗАЩИТА.
     //
-    // Он не берётся из Delta, потому что заголовок
-    // заметки хранится отдельно.
+    // Если наш разбор Delta почему-то дал пустой результат,
+    // НИКОГДА не сохраняем пустой Markdown.
+    //
+    // Берём plainText напрямую.
+    // --------------------------------------------------------
+
+    if (result.isEmpty &&
+        plainText.trim().isNotEmpty) {
+      result = plainText.trim();
+    }
+
+    // --------------------------------------------------------
+    // Ещё одна проверка.
+    //
+    // Если в результате Delta потерялась существенная часть
+    // текста, используем безопасный plain text.
+    // --------------------------------------------------------
+
+    final sourceTextLength =
+        plainText.trim().length;
+
+    final resultTextLength =
+        result.replaceAll(
+          RegExp(r'[*_`#>\-\[\]\(\)]'),
+          '',
+        ).trim().length;
+
+    if (sourceTextLength > 20 &&
+        resultTextLength <
+            (sourceTextLength * 0.5)) {
+      debugPrint(
+        'Delta Markdown выглядит подозрительно. '
+        'Используем plain text.',
+      );
+
+      result = plainText.trim();
+    }
+
+    // --------------------------------------------------------
+    // ЗАГОЛОВОК ЗАМЕТКИ.
+    // --------------------------------------------------------
+
     final title =
         _titleController.text.trim();
 
@@ -1902,8 +2012,7 @@ class _EditorScreenState
       }
     }
 
-    if (!wroteAnything &&
-        title.isEmpty) {
+    if (result.trim().isEmpty) {
       return '';
     }
 
@@ -1911,24 +2020,18 @@ class _EditorScreenState
   }
 
   // ==========================================================
-  // TEMP FILE NAME
+  // SAFE FILE NAME
   // ==========================================================
 
-  String _safeFileName(
-    String value,
-  ) {
-    var result =
-        value.trim();
+  String _safeFileName(String value) {
+    var result = value.trim();
 
     if (result.isEmpty) {
-      result =
-          'untitled_note';
+      result = 'untitled_note';
     }
 
     result = result.replaceAll(
-      RegExp(
-        r'[\\/:*?"<>|]',
-      ),
+      RegExp(r'[\\/:*?"<>|]'),
       '_',
     );
 
@@ -1939,8 +2042,7 @@ class _EditorScreenState
   // EXPORT MARKDOWN
   // ==========================================================
 
-  Future<void>
-      _saveToMarkdownFile() async {
+  Future<void> _saveToMarkdownFile() async {
     try {
       if (_controller == null) {
         throw Exception(
@@ -1948,33 +2050,70 @@ class _EditorScreenState
         );
       }
 
-      final markdown =
-          _deltaToMarkdown();
+      // ------------------------------------------------------
+      // Получаем Markdown.
+      // ------------------------------------------------------
+
+      final markdown = _deltaToMarkdown();
+
+      // ------------------------------------------------------
+      // НИКАКОГО СОХРАНЕНИЯ ПУСТОГО ФАЙЛА.
+      // ------------------------------------------------------
 
       if (markdown.trim().isEmpty) {
         throw Exception(
-          'Заметка пустая.',
+          'Заметка действительно пустая.',
         );
       }
+
+      // ------------------------------------------------------
+      // DEBUG
+      //
+      // Это позволит нам увидеть в logcat/console,
+      // что именно приложение пытается сохранить.
+      // ------------------------------------------------------
+
+      debugPrint(
+        '========================================',
+      );
+
+      debugPrint(
+        'MARKDOWN TO SAVE:',
+      );
+
+      debugPrint(markdown);
+
+      debugPrint(
+        'MARKDOWN LENGTH: ${markdown.length}',
+      );
+
+      debugPrint(
+        '========================================',
+      );
+
+      // ------------------------------------------------------
+      // ИМЯ ФАЙЛА
+      // ------------------------------------------------------
 
       final fileName =
           '${_safeFileName(_titleController.text)}.md';
 
-      // --------------------------------------------------------
-      // Создаём временный файл в системной временной папке.
-      //
-      // Никакого getExternalStorageDirectory().
-      // Поэтому дополнительный path_provider не нужен.
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // TEMP FILE
+      // ------------------------------------------------------
 
       final tempDirectory =
           Directory.systemTemp;
 
-      final tempFile =
-          File(
+      final tempFile = File(
         '${tempDirectory.path}/'
-        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
+        '${DateTime.now().microsecondsSinceEpoch}_'
+        '$fileName',
       );
+
+      // ------------------------------------------------------
+      // Записываем UTF-8.
+      // ------------------------------------------------------
 
       await tempFile.writeAsString(
         markdown,
@@ -1982,29 +2121,63 @@ class _EditorScreenState
         flush: true,
       );
 
+      // ------------------------------------------------------
+      // Проверяем, что файл реально существует.
+      // ------------------------------------------------------
+
       if (!await tempFile.exists()) {
         throw Exception(
           'Временный файл не создан.',
         );
       }
 
+      // ------------------------------------------------------
+      // Проверяем размер.
+      // ------------------------------------------------------
+
+      final fileLength =
+          await tempFile.length();
+
+      debugPrint(
+        'TEMP FILE: ${tempFile.path}',
+      );
+
+      debugPrint(
+        'TEMP FILE SIZE: $fileLength bytes',
+      );
+
+      if (fileLength == 0) {
+        throw Exception(
+          'Создан пустой временный файл.',
+        );
+      }
+
+      // ------------------------------------------------------
+      // ANDROID FILE PICKER
+      // ------------------------------------------------------
+
       final savedPath =
           await FlutterFileDialog.saveFile(
-        params:
-            SaveFileDialogParams(
+        params: SaveFileDialogParams(
           sourceFilePath:
               tempFile.path,
-          fileName:
-              fileName,
+          fileName: fileName,
         ),
       );
 
+      // ------------------------------------------------------
       // Удаляем временный файл.
+      // ------------------------------------------------------
+
       try {
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
       } catch (_) {}
+
+      // ------------------------------------------------------
+      // RESULT
+      // ------------------------------------------------------
 
       if (!mounted) {
         return;
@@ -2012,9 +2185,7 @@ class _EditorScreenState
 
       if (savedPath != null &&
           savedPath.isNotEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        )
+        ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
@@ -2026,9 +2197,7 @@ class _EditorScreenState
             ),
           );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        )
+        ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
@@ -2040,14 +2209,20 @@ class _EditorScreenState
             ),
           );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint(
+        'Ошибка Markdown export: $e',
+      );
+
+      debugPrint(
+        stackTrace.toString(),
+      );
+
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      )
+      ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
@@ -2055,14 +2230,34 @@ class _EditorScreenState
               'Ошибка сохранения Markdown:\n$e',
             ),
             duration:
-                const Duration(seconds: 5),
+                const Duration(seconds: 6),
           ),
         );
     }
   }
 
   // ==========================================================
-  // FORMAT TOOLBAR
+  // MESSAGE
+  // ==========================================================
+
+  void _showMessage(String text) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(text),
+          duration:
+              const Duration(seconds: 3),
+        ),
+      );
+  }
+
+  // ==========================================================
+  // TOOLBAR
   // ==========================================================
 
   Widget _buildToolbar() {
@@ -2071,8 +2266,7 @@ class _EditorScreenState
     }
 
     return FleatherToolbar.basic(
-      controller:
-          _controller!,
+      controller: _controller!,
     );
   }
 
@@ -2081,17 +2275,27 @@ class _EditorScreenState
   // ==========================================================
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     if (_controller == null) {
       return const Scaffold(
         body: Center(
-          child:
-              CircularProgressIndicator(),
+          child: CircularProgressIndicator(),
         ),
       );
     }
+
+    final availableCategories =
+        widget.categories
+            .where(
+              (category) =>
+                  category != 'Все',
+            )
+            .toList();
+
+    final validCategory =
+        availableCategories.contains(
+      _selectedCategory,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -2099,8 +2303,7 @@ class _EditorScreenState
           controller:
               _titleController,
 
-          style:
-              const TextStyle(
+          style: const TextStyle(
             fontSize: 20,
             fontWeight:
                 FontWeight.bold,
@@ -2120,7 +2323,7 @@ class _EditorScreenState
 
         actions: [
           // ----------------------------------------------------
-          // EXPORT MARKDOWN
+          // MARKDOWN
           // ----------------------------------------------------
 
           IconButton(
@@ -2129,8 +2332,7 @@ class _EditorScreenState
 
             icon:
                 const Icon(
-              Icons
-                  .description_outlined,
+              Icons.description_outlined,
             ),
 
             onPressed:
@@ -2138,7 +2340,7 @@ class _EditorScreenState
           ),
 
           // ----------------------------------------------------
-          // SAVE NOTE
+          // SAVE
           // ----------------------------------------------------
 
           IconButton(
@@ -2151,7 +2353,9 @@ class _EditorScreenState
             ),
 
             onPressed:
-                _saveNote,
+                _saving
+                    ? null
+                    : _saveNote,
           ),
         ],
       ),
@@ -2159,22 +2363,20 @@ class _EditorScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // --------------------------------------------------
+            // ==================================================
             // CATEGORY
-            // --------------------------------------------------
+            // ==================================================
 
             Padding(
               padding:
-                  const EdgeInsets
-                      .fromLTRB(
+                  const EdgeInsets.fromLTRB(
                 12,
                 8,
                 12,
                 4,
               ),
 
-              child:
-                  Row(
+              child: Row(
                 children: [
                   const Icon(
                     Icons.folder_outlined,
@@ -2199,37 +2401,30 @@ class _EditorScreenState
                       child:
                           DropdownButton<String>(
                         value:
-                            widget.categories.contains(
-                                  _selectedCategory,
-                                )
+                            validCategory
                                 ? _selectedCategory
                                 : null,
 
                         isExpanded:
                             true,
 
-                        items: widget
-                            .categories
-                            .where(
-                              (category) =>
-                                  category !=
-                                  'Все',
-                            )
-                            .map(
-                              (
+                        items:
+                            availableCategories
+                                .map(
+                          (
+                            category,
+                          ) =>
+                              DropdownMenuItem<
+                                  String>(
+                            value:
                                 category,
-                              ) =>
-                                  DropdownMenuItem<
-                                      String>(
-                                value:
-                                    category,
-                                child:
-                                    Text(
-                                  category,
-                                ),
-                              ),
-                            )
-                            .toList(),
+
+                            child:
+                                Text(
+                              category,
+                            ),
+                          ),
+                        ).toList(),
 
                         onChanged:
                             (
@@ -2256,9 +2451,9 @@ class _EditorScreenState
               height: 1,
             ),
 
-            // --------------------------------------------------
+            // ==================================================
             // TOOLBAR
-            // --------------------------------------------------
+            // ==================================================
 
             SingleChildScrollView(
               scrollDirection:
@@ -2272,15 +2467,14 @@ class _EditorScreenState
               height: 1,
             ),
 
-            // --------------------------------------------------
+            // ==================================================
             // EDITOR
-            // --------------------------------------------------
+            // ==================================================
 
             Expanded(
               child: Padding(
                 padding:
-                    const EdgeInsets
-                        .all(
+                    const EdgeInsets.all(
                   8,
                 ),
 
@@ -2293,8 +2487,7 @@ class _EditorScreenState
                       _focusNode,
 
                   padding:
-                      const EdgeInsets
-                          .all(
+                      const EdgeInsets.all(
                     12,
                   ),
 
