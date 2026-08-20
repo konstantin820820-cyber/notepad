@@ -1439,20 +1439,137 @@ class _HomeScreenState extends State<HomeScreen>
 // EDITOR
 // ============================================================
 
-class EditorScreen extends StatefulWidget {
-  final Note? note;
-  final List<String> categories;
-  final String? initialCategory;
+Future<void> _saveToMarkdownFile() async {
+  try {
+    final plainText =
+        _controller.document.toPlainText();
 
-  const EditorScreen({
-    super.key,
-    this.note,
-    required this.categories,
-    this.initialCategory,
-  });
+    final delta =
+        _controller.document.toDelta();
 
-  @override
-  State<EditorScreen> createState() => _EditorScreenState();
+    final deltaJson =
+        delta.toJson();
+
+    final debugText = StringBuffer();
+
+    debugText.writeln(
+      '=== TEST FLEATHER ===',
+    );
+
+    debugText.writeln();
+
+    debugText.writeln(
+      'ЗАГОЛОВОК:',
+    );
+
+    debugText.writeln(
+      _titleController.text,
+    );
+
+    debugText.writeln();
+
+    debugText.writeln(
+      'PLAIN TEXT:',
+    );
+
+    debugText.writeln(
+      plainText,
+    );
+
+    debugText.writeln();
+
+    debugText.writeln(
+      'PLAIN TEXT LENGTH:',
+    );
+
+    debugText.writeln(
+      plainText.length,
+    );
+
+    debugText.writeln();
+
+    debugText.writeln(
+      'DELTA:',
+    );
+
+    debugText.writeln(
+      jsonEncode(deltaJson),
+    );
+
+    debugText.writeln();
+
+    debugText.writeln(
+      'DELTA LENGTH:',
+    );
+
+    debugText.writeln(
+      deltaJson.length,
+    );
+
+    final fileName =
+        'fleather_test.txt';
+
+    final tempFile = File(
+      '${Directory.systemTemp.path}/'
+      '${DateTime.now().microsecondsSinceEpoch}_$fileName',
+    );
+
+    await tempFile.writeAsString(
+      debugText.toString(),
+      encoding: utf8,
+      flush: true,
+    );
+
+    final savedPath =
+        await FlutterFileDialog.saveFile(
+      params:
+          SaveFileDialogParams(
+        sourceFilePath:
+            tempFile.path,
+        fileName:
+            fileName,
+      ),
+    );
+
+    try {
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+    } catch (_) {}
+
+    if (!mounted) {
+      return;
+    }
+
+    if (savedPath != null &&
+        savedPath.isNotEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Диагностический файл сохранён.',
+            ),
+          ),
+        );
+    }
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ошибка диагностики:\n$e',
+          ),
+          duration:
+              const Duration(seconds: 5),
+        ),
+      );
+  }
 }
 
 // ============================================================
