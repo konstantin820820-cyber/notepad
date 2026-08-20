@@ -9,10 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
-  shared_preferences: ^2.3.5
-  fleather: ^1.27.0
+  shared_preferences: ^2.2.0
+  fleather: ^1.0.0
+  path_provider: ^2.1.1
+  permission_handler: ^11.1.0
 
 flutter:
   uses-material-design: true
