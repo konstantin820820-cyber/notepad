@@ -199,7 +199,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _saveToHtmlFile() async {
     try {
-      final converter = const FleatherHtmlCodec();
+      final converter = FleatherHtmlCodec();
       final String htmlContent = converter.encode(_controller!.document.toDelta());
       final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
       final directory = Directory('/storage/emulated/0/Download');
