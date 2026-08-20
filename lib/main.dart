@@ -1464,318 +1464,207 @@ img {
     return html.toString();
   }
 
+   // ==========================================================
+  // SAVE MARKDOWN
   // ==========================================================
-  // SAVE HTML
-  // ==========================================================
 
- Future<void> _saveToHtmlFile() async {
-    try {
-      FocusScope.of(context).unfocus();
+  String _escapeMarkdown(String text) {
+    return text
+        .replaceAll('\\', '\\\\')
+        .replaceAll('*', '\\*')
+        .replaceAll('_', '\\_')
+        .replaceAll('`', '\\`')
+        .replaceAll('[', '\\[')
+        .replaceAll(']', '\\]');
+  }
 
-      // ------------------------------------------------------
-      // ВРЕМЕННЫЙ ТЕСТ
-      // ------------------------------------------------------
+  String _deltaToMarkdown() {
+    final List<dynamic> deltaJson =
+        _controller!.document.toDelta().toJson();
 
-      final htmlContent = '''
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тест HTML</title>
-</head>
-<body>
+    final StringBuffer markdown =
+        StringBuffer();
 
-<h1>ТЕСТ HTML</h1>
+    for (final operation in deltaJson) {
+      if (operation is! Map) {
+        continue;
+      }
 
-<p>Если этот текст виден в сохранённом файле,
-значит система сохранения HTML работает.</p>
+      if (!operation.containsKey('insert')) {
+        continue;
+      }
 
-<p>Вторая строка теста.</p>
+      final insert = operation['insert'];
 
-</body>
-</html>
-''';
-
-      // ------------------------------------------------------
-      // Имя файла
-      // ------------------------------------------------------
-
-      final title =
-          _titleController.text.trim();
-
-      final baseName =
-          title.isNotEmpty
-              ? title
-              : 'untitled_note';
-
-      final safeName = baseName
-          .replaceAll(
-            RegExp(r'[\\/:*?"<>|]'),
-            '_',
-          )
-          .trim();
-
-      final fileName =
-          '${safeName.isEmpty ? 'untitled_note' : safeName}.html';
+      final Map<String, dynamic> attributes =
+          operation['attributes'] is Map
+              ? Map<String, dynamic>.from(
+                  operation['attributes'],
+                )
+              : <String, dynamic>{};
 
       // ------------------------------------------------------
-      // Временный файл
+      // Обычный текст
       // ------------------------------------------------------
 
-      final tempDirectory =
-          Directory.systemTemp;
+      if (insert is String) {
+        final lines = insert.split('\n');
 
-      final tempFile = File(
-        '${tempDirectory.path}/$fileName',
-      );
+        for (int i = 0; i < lines.length; i++) {
+          String text =
+              _escapeMarkdown(lines[i]);
 
-      await tempFile.writeAsString(
-        htmlContent,
-        encoding: utf8,
-        flush: true,
-      );
+          // Жирный
+          if (attributes['bold'] == true &&
+              text.isNotEmpty) {
+            text = '**$text**';
+          }
 
-      // ------------------------------------------------------
-      // Системное сохранение Android
-      // ------------------------------------------------------
+          // Курсив
+          if (attributes['italic'] == true &&
+              text.isNotEmpty) {
+            text = '*$text*';
+          }
 
-      final savedPath =
-          await FlutterFileDialog.saveFile(
-        params: SaveFileDialogParams(
-          sourceFilePath:
-              tempFile.path,
-        ),
-      );
+          // Зачёркивание
+          if (attributes['strike'] == true &&
+              text.isNotEmpty) {
+            text = '~~$text~~';
+          }
 
-      // ------------------------------------------------------
-      // Удаляем временный файл
-      // ------------------------------------------------------
+          // Код
+          if (attributes['code'] == true &&
+              text.isNotEmpty) {
+            text = '`$text`';
+          }
 
-      try {
-        if (await tempFile.exists()) {
-          await tempFile.delete();
+          // Ссылка
+          if (attributes['link'] != null &&
+              text.isNotEmpty) {
+            final link =
+                attributes['link'].toString();
+
+            text = '[$text]($link)';
+          }
+
+          // Заголовок
+          if (attributes['header'] == 1) {
+            text = '# $text';
+          } else if (attributes['header'] == 2) {
+            text = '## $text';
+          } else if (attributes['header'] == 3) {
+            text = '### $text';
+          }
+
+          // Цитата
+          if (attributes['blockquote'] == true) {
+            text = '> $text';
+          }
+
+          // Список
+          if (attributes['list'] == 'bullet') {
+            text = '- $text';
+          } else if (attributes['list'] == 'ordered') {
+            text = '1. $text';
+          }
+
+          markdown.write(text);
+
+          if (i < lines.length - 1) {
+            markdown.write('\n');
+          }
         }
-      } catch (_) {}
-
-      if (!mounted) {
-        return;
       }
 
       // ------------------------------------------------------
-      // Отмена
+      // Изображение
       // ------------------------------------------------------
 
-      if (savedPath == null) {
+      else if (insert is Map) {
+        if (insert.containsKey('image')) {
+          final image =
+              insert['image'].toString();
+
+          markdown.write(
+            '![Изображение]($image)',
+          );
+
+          markdown.write('\n');
+        }
+      }
+    }
+
+    return markdown.toString();
+  }
+
+  // ==========================================================
+  // SAVE MARKDOWN FILE
+  // ==========================================================
+
+  Future<void> _saveToMarkdownFile() async {
+    try {
+      final String markdownContent =
+          _deltaToMarkdown();
+
+      final Directory? targetDir =
+          await getExternalStorageDirectory();
+
+      if (targetDir == null) {
+        throw Exception(
+          'Не удалось получить папку для сохранения.',
+        );
+      }
+
+      String fileName =
+          _titleController.text.trim();
+
+      if (fileName.isEmpty) {
+        fileName = 'untitled_note';
+      }
+
+      // Убираем запрещённые символы.
+      fileName = fileName.replaceAll(
+        RegExp(r'[\\/:*?"<>|]'),
+        '_',
+      );
+
+      final file = File(
+        '${targetDir.path}/$fileName.md',
+      );
+
+      await file.writeAsString(
+        markdownContent,
+        encoding: utf8,
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Сохранение отменено',
+                'Сохранено как Markdown:\n${file.path}',
               ),
+              duration:
+                  const Duration(seconds: 4),
             ),
           );
-
-        return;
       }
-
-      // ------------------------------------------------------
-      // Успех
-      // ------------------------------------------------------
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Тестовый HTML сохранён',
-            ),
-            duration:
-                Duration(seconds: 4),
-          ),
-        );
     } catch (e) {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'Ошибка сохранения Markdown:\n$e',
+              ),
+              duration:
+                  const Duration(seconds: 5),
+            ),
+          );
       }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ошибка сохранения HTML:\n$e',
-            ),
-            duration:
-                const Duration(seconds: 5),
-          ),
-        );
     }
-  }
-  
-  // ==========================================================
-  // CLOSE EDITOR
-  // ==========================================================
-
-  Future<bool> _closeEditor() async {
-    Navigator.pop(
-      context,
-      {
-        'title':
-            _titleController.text,
-
-        'contentJson':
-            jsonEncode(
-          _controller!.document.toJson(),
-        ),
-
-        'category':
-            _selectedCategory,
-      },
-    );
-
-    return false;
-  }
-
-  // ==========================================================
-  // BUILD
-  // ==========================================================
-
-  @override
-  Widget build(BuildContext context) {
-    if (_controller == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    final categories =
-        widget.categories
-            .where((cat) => cat != 'Все')
-            .toList();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Редактор'),
-
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.save_alt,
-            ),
-
-            tooltip:
-                'Сохранить как HTML',
-
-            onPressed:
-                _saveToHtmlFile,
-          ),
-
-          if (categories.isNotEmpty)
-            DropdownButton<String>(
-              value: categories.contains(
-                _selectedCategory,
-              )
-                  ? _selectedCategory
-                  : categories.first,
-
-              underline:
-                  const SizedBox(),
-
-              items: categories
-                  .map(
-                    (category) =>
-                        DropdownMenuItem(
-                      value: category,
-                      child: Text(category),
-                    ),
-                  )
-                  .toList(),
-
-              onChanged: (value) {
-                if (value == null) {
-                  return;
-                }
-
-                setState(() {
-                  _selectedCategory =
-                      value;
-                });
-              },
-            ),
-        ],
-      ),
-
-      body: PopScope(
-        canPop: false,
-
-        onPopInvokedWithResult:
-            (didPop, result) {
-          if (!didPop) {
-            _closeEditor();
-          }
-        },
-
-        child: Column(
-          children: [
-            Padding(
-              padding:
-                  const EdgeInsets.all(16),
-
-              child: TextField(
-                controller:
-                    _titleController,
-
-                style:
-                    const TextStyle(
-                  fontSize: 22,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-
-                decoration:
-                    const InputDecoration(
-                  hintText:
-                      'Заголовок',
-                  border:
-                      InputBorder.none,
-                ),
-              ),
-            ),
-
-            Expanded(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
-
-                child: FleatherEditor(
-                  controller:
-                      _controller!,
-
-                  focusNode:
-                      _focusNode,
-                ),
-              ),
-            ),
-
-            Material(
-              elevation: 4,
-
-              child:
-                  FleatherToolbar.basic(
-                controller:
-                    _controller!,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
