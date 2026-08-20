@@ -1468,44 +1468,100 @@ img {
   // SAVE HTML
   // ==========================================================
 
- Future<void> _saveToHtmlFile() async {
-    File? tempFile;
-
+Future<void> _saveToHtmlFile() async {
     try {
       FocusScope.of(context).unfocus();
 
-      // ------------------------------------------------------
-      // 1. Формируем HTML
-      // ------------------------------------------------------
+      // ТЕСТОВЫЙ HTML.
+      // Здесь специально НЕ используется редактор.
+      const htmlContent = '''
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Тест HTML</title>
+</head>
+<body>
 
-      final htmlContent = _deltaToHtml();
+<h1>ТЕСТ HTML</h1>
 
-      // Защита от пустого HTML.
-      if (htmlContent.trim().isEmpty) {
-        throw Exception(
-          'HTML получился пустым.',
-        );
+<p>Если ты видишь этот текст в браузере,
+значит сохранение HTML работает правильно.</p>
+
+<p>Вторая строка теста.</p>
+
+</body>
+</html>
+''';
+
+      final tempDirectory = Directory.systemTemp;
+
+      final tempFile = File(
+        '${tempDirectory.path}/test_html.html',
+      );
+
+      await tempFile.writeAsString(
+        htmlContent,
+        encoding: utf8,
+        flush: true,
+      );
+
+      final savedPath =
+          await FlutterFileDialog.saveFile(
+        params: SaveFileDialogParams(
+          sourceFilePath: tempFile.path,
+        ),
+      );
+
+      try {
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+
+      if (!mounted) {
+        return;
       }
 
-      // ------------------------------------------------------
-      // 2. Формируем имя файла
-      // ------------------------------------------------------
+      if (savedPath == null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Сохранение отменено',
+              ),
+            ),
+          );
 
-      final title = _titleController.text.trim();
+        return;
+      }
 
-      final baseName = title.isNotEmpty
-          ? title
-          : 'untitled_note';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Тестовый HTML сохранён',
+            ),
+          ),
+        );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
 
-      final safeName = baseName
-          .replaceAll(
-            RegExp(r'[\\/:*?"<>|]'),
-            '_',
-          )
-          .trim();
-
-      final fileName =
-          '${safeName.isEmpty ? 'untitled_note' : safeName}.html';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Ошибка:\n$e',
+            ),
+          ),
+        );
+    }
+  }
 
       // ------------------------------------------------------
       // 3. Создаём временный HTML-файл
