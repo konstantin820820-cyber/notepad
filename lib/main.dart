@@ -290,4 +290,3 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
   }
-}
