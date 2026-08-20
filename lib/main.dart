@@ -1472,20 +1472,34 @@ img {
     try {
       FocusScope.of(context).unfocus();
 
-      final htmlContent = = '''
+      // ------------------------------------------------------
+      // ВРЕМЕННЫЙ ТЕСТ
+      // ------------------------------------------------------
+
+      final htmlContent = '''
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Тест HTML</title>
 </head>
 <body>
+
 <h1>ТЕСТ HTML</h1>
-<p>Если ты видишь этот текст, сохранение HTML работает.</p>
+
+<p>Если этот текст виден в сохранённом файле,
+значит система сохранения HTML работает.</p>
+
 <p>Вторая строка теста.</p>
+
 </body>
 </html>
 ''';
+
+      // ------------------------------------------------------
+      // Имя файла
+      // ------------------------------------------------------
 
       final title =
           _titleController.text.trim();
@@ -1505,6 +1519,10 @@ img {
       final fileName =
           '${safeName.isEmpty ? 'untitled_note' : safeName}.html';
 
+      // ------------------------------------------------------
+      // Временный файл
+      // ------------------------------------------------------
+
       final tempDirectory =
           Directory.systemTemp;
 
@@ -1518,6 +1536,10 @@ img {
         flush: true,
       );
 
+      // ------------------------------------------------------
+      // Системное сохранение Android
+      // ------------------------------------------------------
+
       final savedPath =
           await FlutterFileDialog.saveFile(
         params: SaveFileDialogParams(
@@ -1525,6 +1547,10 @@ img {
               tempFile.path,
         ),
       );
+
+      // ------------------------------------------------------
+      // Удаляем временный файл
+      // ------------------------------------------------------
 
       try {
         if (await tempFile.exists()) {
@@ -1536,6 +1562,10 @@ img {
         return;
       }
 
+      // ------------------------------------------------------
+      // Отмена
+      // ------------------------------------------------------
+
       if (savedPath == null) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -1550,15 +1580,19 @@ img {
         return;
       }
 
+      // ------------------------------------------------------
+      // Успех
+      // ------------------------------------------------------
+
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text(
-              'HTML сохранён:\n$savedPath',
+              'Тестовый HTML сохранён',
             ),
             duration:
-                const Duration(seconds: 4),
+                Duration(seconds: 4),
           ),
         );
     } catch (e) {
@@ -1579,131 +1613,7 @@ img {
         );
     }
   }
-
-      // ------------------------------------------------------
-      // 3. Создаём временный HTML-файл
-      // ------------------------------------------------------
-
-      final tempDirectory = Directory.systemTemp;
-
-      tempFile = File(
-        '${tempDirectory.path}/$fileName',
-      );
-
-      await tempFile!.writeAsString(
-        htmlContent,
-        encoding: utf8,
-        flush: true,
-      );
-
-      // ------------------------------------------------------
-      // 4. Проверяем, что файл реально записался
-      // ------------------------------------------------------
-
-      if (!await tempFile!.exists()) {
-        throw Exception(
-          'Временный HTML-файл не был создан.',
-        );
-      }
-
-      final fileSize = await tempFile!.length();
-
-      if (fileSize == 0) {
-        throw Exception(
-          'Временный HTML-файл имеет размер 0 байт.',
-        );
-      }
-
-      // ------------------------------------------------------
-      // 5. Android Save File Dialog
-      // ------------------------------------------------------
-
-      final savedPath =
-          await FlutterFileDialog.saveFile(
-        params: SaveFileDialogParams(
-          sourceFilePath: tempFile!.path,
-        ),
-      );
-
-      // ------------------------------------------------------
-      // 6. Удаляем временный файл
-      // ------------------------------------------------------
-
-      try {
-        if (await tempFile!.exists()) {
-          await tempFile!.delete();
-        }
-      } catch (_) {}
-
-      tempFile = null;
-
-      if (!mounted) {
-        return;
-      }
-
-      // ------------------------------------------------------
-      // 7. Пользователь отменил сохранение
-      // ------------------------------------------------------
-
-      if (savedPath == null) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Сохранение отменено',
-              ),
-            ),
-          );
-
-        return;
-      }
-
-      // ------------------------------------------------------
-      // 8. Успешное сохранение
-      // ------------------------------------------------------
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'HTML сохранён.\nРазмер: $fileSize байт',
-            ),
-            duration:
-                const Duration(seconds: 4),
-          ),
-        );
-    } catch (e) {
-      // ------------------------------------------------------
-      // Удаляем временный файл при ошибке
-      // ------------------------------------------------------
-
-      try {
-        if (tempFile != null &&
-            await tempFile!.exists()) {
-          await tempFile!.delete();
-        }
-      } catch (_) {}
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ошибка сохранения HTML:\n$e',
-            ),
-            duration:
-                const Duration(seconds: 5),
-          ),
-        );
-    }
-  }
-
+  
   // ==========================================================
   // CLOSE EDITOR
   // ==========================================================
