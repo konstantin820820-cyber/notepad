@@ -1619,154 +1619,87 @@ class _EditorScreenState extends State<EditorScreen> {
   // SAVE NOTE
   // ==========================================================
 
-  Future<void> _saveNote() async {
-    if (_saving) {
+void _saveNote() {
+  if (_controller == null) {
+    debugPrint('========== FLEATHER DIAGNOSTIC ==========');
+    debugPrint('ERROR: _controller == null');
+    debugPrint('==========================================');
+    return;
+  }
+
+  try {
+    final document = _controller!.document;
+
+    final plainText = document.toPlainText();
+    final delta = document.toDelta();
+    final deltaJson = delta.toJson();
+    final contentJson = jsonEncode(deltaJson);
+
+    debugPrint('');
+    debugPrint('========== FLEATHER DIAGNOSTIC ==========');
+
+    debugPrint('TITLE: "${_titleController.text}"');
+
+    debugPrint(
+      'PLAIN TEXT LENGTH: ${plainText.length}',
+    );
+
+    debugPrint('PLAIN TEXT:');
+    debugPrint(
+      plainText.isEmpty ? '[EMPTY]' : plainText,
+    );
+
+    debugPrint('DELTA:');
+    debugPrint(delta.toString());
+
+    debugPrint('DELTA JSON:');
+    debugPrint(jsonEncode(deltaJson));
+
+    debugPrint(
+      'DELTA JSON LENGTH: ${jsonEncode(deltaJson).length}',
+    );
+
+    debugPrint('CONTENT JSON LENGTH: ${contentJson.length}');
+
+    debugPrint('CONTENT JSON TO SAVE:');
+    debugPrint(contentJson);
+
+    debugPrint('==========================================');
+    debugPrint('');
+
+    Navigator.pop(
+      context,
+      {
+        'title': _titleController.text.trim(),
+        'contentJson': contentJson,
+        'category': _selectedCategory,
+      },
+    );
+  } catch (e, stackTrace) {
+    debugPrint('');
+    debugPrint('========== FLEATHER ERROR ==========');
+    debugPrint('ERROR: $e');
+    debugPrint('STACK TRACE:');
+    debugPrint(stackTrace.toString());
+    debugPrint('====================================');
+    debugPrint('');
+
+    if (!mounted) {
       return;
     }
 
-    setState(() {
-      _saving = true;
-    });
-
-    try {
-      // ------------------------------------------------------
-      // TITLE
-      // ------------------------------------------------------
-
-      final title =
-          _titleController.text.trim();
-
-      // ------------------------------------------------------
-      // DELTA
-      // ------------------------------------------------------
-
-      final deltaJson =
-          _getDeltaJson();
-
-      // ------------------------------------------------------
-      // TEXT
-      // ------------------------------------------------------
-
-      final body =
-          _getTextFromDelta();
-
-      // ------------------------------------------------------
-      // DIAGNOSTICS
-      // ------------------------------------------------------
-
-      debugPrint(
-        '========================================',
-      );
-
-      debugPrint(
-        'SAVE NOTE',
-      );
-
-      debugPrint(
-        'TITLE: "$title"',
-      );
-
-      debugPrint(
-        'TITLE LENGTH: ${title.length}',
-      );
-
-      debugPrint(
-        'BODY: "$body"',
-      );
-
-      debugPrint(
-        'BODY LENGTH: ${body.length}',
-      );
-
-      debugPrint(
-        'DELTA JSON: ${jsonEncode(deltaJson)}',
-      );
-
-      debugPrint(
-        'DELTA OPERATIONS: ${deltaJson.length}',
-      );
-
-      debugPrint(
-        '========================================',
-      );
-
-      // ------------------------------------------------------
-      // CONTENT JSON
-      //
-      // ВАЖНО:
-      //
-      // Мы сохраняем НЕ текст,
-      // а настоящий Delta документа.
-      //
-      // Поэтому форматирование Fleather
-      // не теряется.
-      // ------------------------------------------------------
-
-      final contentJson =
-          jsonEncode(deltaJson);
-
-      // ------------------------------------------------------
-      // ПРОВЕРКА
-      // ------------------------------------------------------
-
-      if (deltaJson.isEmpty) {
-        debugPrint(
-          'WARNING: DELTA IS EMPTY',
-        );
-      }
-
-      // ------------------------------------------------------
-      // RETURN TO HOME
-      // ------------------------------------------------------
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.pop(
-        context,
-        {
-          'title': title,
-
-          'contentJson':
-              contentJson,
-
-          'category':
-              _selectedCategory,
-        },
-      );
-    } catch (e, stackTrace) {
-      debugPrint(
-        'ОШИБКА СОХРАНЕНИЯ ЗАМЕТКИ: $e',
-      );
-
-      debugPrint(
-        stackTrace.toString(),
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ошибка сохранения:\n$e',
-            ),
-            duration:
-                const Duration(seconds: 5),
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ошибка чтения редактора:\n$e',
           ),
-        );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _saving = false;
-        });
-      }
-    }
+          duration: const Duration(seconds: 5),
+        ),
+      );
   }
+}
 
   // ==========================================================
   // MARKDOWN ESCAPE
