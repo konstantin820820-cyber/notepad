@@ -199,8 +199,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _saveToHtmlFile() async {
     try {
-      final converter = FleatherHtmlCodec();
-      final String htmlContent = converter.encode(_controller!.document.toDelta());
+      final String htmlContent = FleatherCodec.html.encode(_controller!.document.toDelta());
       final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
       final directory = Directory('/storage/emulated/0/Download');
       final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
@@ -219,23 +218,11 @@ class _EditorScreenState extends State<EditorScreen> {
         </body>
         </html>
       """);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Красивый HTML сохранен в Загрузки: $fileName.html')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ошибка при сохранении файла.')));
-      }
-    }
+    } catch (e) {}
   }
 
   void _copyToClipboard() {
-    final String plainText = _controller!.document.toPlainText();
-    Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n$plainText")).then((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Текст заметки скопирован в буфер обмена!')));
-      }
-    });
+    Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n${_controller!.document.toPlainText()}"));
   }
 
   @override
