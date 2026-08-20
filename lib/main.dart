@@ -1,9 +1,10 @@
-import 'dart:convert';
+aimport 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fleather/fleather_html.dart';
 import 'package:fleather/fleather.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
@@ -199,7 +200,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _saveToHtmlFile() async {
     try {
-      final String htmlContent = fleatherCodec.html.encode(_controller!.document.toDelta());
+      final String htmlContent = FleatherHtmlCodec().encode(_controller!.document.toDelta());
       final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
       final directory = Directory('/storage/emulated/0/Download');
       final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
