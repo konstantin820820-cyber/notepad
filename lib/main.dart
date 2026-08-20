@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fleather/fleather.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() => runApp(const LocalNotesApp());
 
@@ -198,29 +199,36 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _saveToHtmlFile() async {
-    try:
-final String htmlContent = fleatherHtml.encode(_controller!.document.toDelta());
+      Future<void> _saveToHtmlFile() async {
+    try {
+      // Используем корректный кодек из пакета fleather
+      final String htmlContent = const FleatherCodec().encodeHtml(_controller!.document.toDelta());
+      
+      // Находим системную директорию (например, Downloads или Documents)
+      final Directory? targetDir = await getExternalStorageDirectory(); 
+      if (targetDir == null) return;
 
-final String fileName = widget.note?.title ?? 'untitled_note';
+      // Берем имя из контроллера заголовка
+      final String fileName = _titleController.text.isNotEmpty 
+          ? _titleController.text 
+          : 'untitled_note';
 
-final file = File('${targetDir.path}/$fileName.html');
+      final file = File('${targetDir.path}/$fileName.html');
+      await file.writeAsString(htmlContent);
 
-      await file.writeAsString("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>${_titleController.text}</title>
-          <style>body { font-family: sans-serif; padding: 20px; background: #121212; color: #fff; }</style>
-        </head>
-        <body>
-          <h2>${_titleController.text}</h2>
-          $htmlContent
-        </body>
-        </html>
-      """);
-    } catch (e) {}
-  }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Сохранено в ${file.path}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения: $e')),
+        );
+      }
+    }
+  } // Проверьте, чтобы здесь стояла ровно одна закрывающая скобка метода!
 
   void _copyToClipboard() {
     Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n${_controller!.document.toPlainText()}"));
