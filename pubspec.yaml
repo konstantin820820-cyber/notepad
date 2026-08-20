@@ -7,11 +7,11 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  parchment_to_html: ^1.0.0+1a
+  parchment_to_html: ^1.0.0+1
   flutter:
     sdk: flutter
   flutter_localizations:
-    sdk: flutter
+    sdk: flutterw
   shared_preferences: ^2.3.5
   fleather: ^1.27.0
   reorderable_grid_view: ^2.2.1
