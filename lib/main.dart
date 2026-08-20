@@ -1468,23 +1468,35 @@ img {
   // SAVE HTML
   // ==========================================================
 
-  Future<void> _saveToHtmlFile() async {
+ Future<void> _saveToHtmlFile() async {
+    File? tempFile;
+
     try {
       FocusScope.of(context).unfocus();
 
-      final htmlContent =
-          _deltaToHtml();
+      // ------------------------------------------------------
+      // 1. Формируем HTML
+      // ------------------------------------------------------
 
-      final title =
-          _titleController.text.trim();
+      final htmlContent = _deltaToHtml();
 
-      final baseName =
-          title.isNotEmpty
-              ? title
-              : 'untitled_note';
+      // Защита от пустого HTML.
+      if (htmlContent.trim().isEmpty) {
+        throw Exception(
+          'HTML получился пустым.',
+        );
+      }
 
-      // Убираем запрещённые Android/Windows
-      // символы из имени файла.
+      // ------------------------------------------------------
+      // 2. Формируем имя файла
+      // ------------------------------------------------------
+
+      final title = _titleController.text.trim();
+
+      final baseName = title.isNotEmpty
+          ? title
+          : 'untitled_note';
+
       final safeName = baseName
           .replaceAll(
             RegExp(r'[\\/:*?"<>|]'),
@@ -1495,44 +1507,70 @@ img {
       final fileName =
           '${safeName.isEmpty ? 'untitled_note' : safeName}.html';
 
-      // Создаём временный файл только внутри
-      // cache приложения.
-      //
-      // Это НЕ место постоянного хранения.
-      // Android после этого покажет системный
-      // диалог выбора места.
-      final tempDirectory =
-          Directory.systemTemp;
+      // ------------------------------------------------------
+      // 3. Создаём временный HTML-файл
+      // ------------------------------------------------------
 
-      final tempFile = File(
+      final tempDirectory = Directory.systemTemp;
+
+      tempFile = File(
         '${tempDirectory.path}/$fileName',
       );
 
-      await tempFile.writeAsString(
+      await tempFile!.writeAsString(
         htmlContent,
         encoding: utf8,
         flush: true,
       );
 
-      // Системный Android Save File Dialog.
+      // ------------------------------------------------------
+      // 4. Проверяем, что файл реально записался
+      // ------------------------------------------------------
+
+      if (!await tempFile!.exists()) {
+        throw Exception(
+          'Временный HTML-файл не был создан.',
+        );
+      }
+
+      final fileSize = await tempFile!.length();
+
+      if (fileSize == 0) {
+        throw Exception(
+          'Временный HTML-файл имеет размер 0 байт.',
+        );
+      }
+
+      // ------------------------------------------------------
+      // 5. Android Save File Dialog
+      // ------------------------------------------------------
+
       final savedPath =
           await FlutterFileDialog.saveFile(
         params: SaveFileDialogParams(
-          sourceFilePath:
-              tempFile.path,
+          sourceFilePath: tempFile!.path,
         ),
       );
 
-      // Временный файл больше не нужен.
+      // ------------------------------------------------------
+      // 6. Удаляем временный файл
+      // ------------------------------------------------------
+
       try {
-        if (await tempFile.exists()) {
-          await tempFile.delete();
+        if (await tempFile!.exists()) {
+          await tempFile!.delete();
         }
       } catch (_) {}
+
+      tempFile = null;
 
       if (!mounted) {
         return;
       }
+
+      // ------------------------------------------------------
+      // 7. Пользователь отменил сохранение
+      // ------------------------------------------------------
 
       if (savedPath == null) {
         ScaffoldMessenger.of(context)
@@ -1548,18 +1586,33 @@ img {
         return;
       }
 
+      // ------------------------------------------------------
+      // 8. Успешное сохранение
+      // ------------------------------------------------------
+
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'HTML сохранён:\n$savedPath',
+              'HTML сохранён.\nРазмер: $fileSize байт',
             ),
             duration:
                 const Duration(seconds: 4),
           ),
         );
     } catch (e) {
+      // ------------------------------------------------------
+      // Удаляем временный файл при ошибке
+      // ------------------------------------------------------
+
+      try {
+        if (tempFile != null &&
+            await tempFile!.exists()) {
+          await tempFile!.delete();
+        }
+      } catch (_) {}
+
       if (!mounted) {
         return;
       }
