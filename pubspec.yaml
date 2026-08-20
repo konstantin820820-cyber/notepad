@@ -9,13 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.2.0  # Или ваша текущая версия
-  fleather: ^1.0.0            # Или ваша текущая версия
-  
-  # Добавьте эти три строки:
+  shared_preferences: ^2.2.0
+  fleather: ^1.0.0
   path_provider: ^2.1.1
   permission_handler: ^11.1.0
-
 
 flutter:
   uses-material-design: true
