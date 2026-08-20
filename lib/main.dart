@@ -244,7 +244,7 @@ class _EditorScreenState extends State<EditorScreen> {
       );
     }
   }
-ц}
+}
 
   @override
   void dispose() {
