@@ -1468,13 +1468,11 @@ img {
   // SAVE HTML
   // ==========================================================
 
-Future<void> _saveToHtmlFile() async {
+ Future<void> _saveToHtmlFile() async {
     try {
       FocusScope.of(context).unfocus();
 
-      // ТЕСТОВЫЙ HTML.
-      // Здесь специально НЕ используется редактор.
-      const htmlContent = '''
+      final htmlContent = = '''
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -1482,22 +1480,36 @@ Future<void> _saveToHtmlFile() async {
 <title>Тест HTML</title>
 </head>
 <body>
-
 <h1>ТЕСТ HTML</h1>
-
-<p>Если ты видишь этот текст в браузере,
-значит сохранение HTML работает правильно.</p>
-
+<p>Если ты видишь этот текст, сохранение HTML работает.</p>
 <p>Вторая строка теста.</p>
-
 </body>
 </html>
 ''';
 
-      final tempDirectory = Directory.systemTemp;
+      final title =
+          _titleController.text.trim();
+
+      final baseName =
+          title.isNotEmpty
+              ? title
+              : 'untitled_note';
+
+      final safeName = baseName
+          .replaceAll(
+            RegExp(r'[\\/:*?"<>|]'),
+            '_',
+          )
+          .trim();
+
+      final fileName =
+          '${safeName.isEmpty ? 'untitled_note' : safeName}.html';
+
+      final tempDirectory =
+          Directory.systemTemp;
 
       final tempFile = File(
-        '${tempDirectory.path}/test_html.html',
+        '${tempDirectory.path}/$fileName',
       );
 
       await tempFile.writeAsString(
@@ -1509,7 +1521,8 @@ Future<void> _saveToHtmlFile() async {
       final savedPath =
           await FlutterFileDialog.saveFile(
         params: SaveFileDialogParams(
-          sourceFilePath: tempFile.path,
+          sourceFilePath:
+              tempFile.path,
         ),
       );
 
@@ -1540,10 +1553,12 @@ Future<void> _saveToHtmlFile() async {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Тестовый HTML сохранён',
+              'HTML сохранён:\n$savedPath',
             ),
+            duration:
+                const Duration(seconds: 4),
           ),
         );
     } catch (e) {
@@ -1556,8 +1571,10 @@ Future<void> _saveToHtmlFile() async {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Ошибка:\n$e',
+              'Ошибка сохранения HTML:\n$e',
             ),
+            duration:
+                const Duration(seconds: 5),
           ),
         );
     }
