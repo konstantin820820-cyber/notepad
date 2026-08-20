@@ -198,33 +198,53 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
   Future<void> _saveToHtmlFile() async {
-    try {
-      // Убран const, вызываем корректный метод конвертации во встроенный кодек
-      final String htmlContent = ParchmentHtmlCodec().encode(_controller!.document.toDelta());
-      
-      final Directory? targetDir = await getExternalStorageDirectory(); 
-      if (targetDir == null) return;
+  try {
+    // Вручную переводим Delta-структуру Fleather в базовую HTML-разметку
+    final List<dynamic> deltaJson = _controller!.document.toDelta().toJson();
+    StringBuffer htmlBuffer = StringBuffer('<html><body>');
 
-      final String fileName = _titleController.text.isNotEmpty 
-          ? _titleController.text 
-          : 'untitled_note';
+    for (var operation in deltaJson) {
+      if (operation is Map<String, dynamic> && operation.containsKey('insert')) {
+        String text = operation['insert'];
+        Map<String, dynamic>? attributes = operation['attributes'];
 
-      final file = File('${targetDir.path}/$fileName.html');
-      await file.writeAsString(htmlContent);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Сохранено в ${file.path}')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка сохранения: $e')),
-        );
+        // Обрабатываем стили текста
+        if (attributes != null) {
+          if (attributes['bold'] == true) text = '<strong>$text</strong>';
+          if (attributes['italic'] == true) text = '<em>$text</em>';
+        }
+        
+        // Превращаем переносы строк в теги абзацев
+        text = text.replaceAll('\n', '<br>');
+        htmlBuffer.write(text);
       }
     }
+    htmlBuffer.write('</body></html>');
+    final String htmlContent = htmlBuffer.toString();
+
+    final Directory? targetDir = await getExternalStorageDirectory();
+    if (targetDir == null) return;
+
+    final String fileName = _titleController.text.isNotEmpty 
+        ? _titleController.text 
+        : 'untitled_note';
+
+    final file = File('${targetDir.path}/$fileName.html');
+    await file.writeAsString(htmlContent);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Сохранено как HTML в ${file.path}')),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка сохранения: $e')),
+      );
+    }
   }
+ц}
 
   @override
   void dispose() {
