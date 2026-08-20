@@ -13,7 +13,6 @@ dependencies:
   fleather: ^1.0.0            # Или ваша текущая версия
   
   # Добавьте эти три строки:
-  reorderableitemsview: ^1.0.1
   path_provider: ^2.1.1
   permission_handler: ^11.1.0
 
