@@ -198,12 +198,13 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _saveToHtmlFile() async {
-    try {
-      final String htmlContent = parchmentToHtml(_controller!.document);
-      final String htmlContent = noteroHtml.encode(_controller!.document.toDelta());
-      final directory = Directory('/storage/emulated/0/Download');
-      final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
-      final file = File('${targetDir.path}/$fileName.html');
+    try:
+final String htmlContent = fleatherHtml.encode(_controller!.document.toDelta());
+
+final String fileName = widget.note?.title ?? 'untitled_note';
+
+final file = File('${targetDir.path}/$fileName.html');
+
       await file.writeAsString("""
         <!DOCTYPE html>
         <html>
