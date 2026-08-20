@@ -200,7 +200,7 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _saveToHtmlFile() async {
     try {
       // Убран const, вызываем корректный метод конвертации во встроенный кодек
-      final String htmlContent = FleatherCodec().encodeHtml(_controller!.document.toDelta());
+      final String htmlContent = ParchmentHtmlCodec().encode(_controller!.document.toDelta());
       
       final Directory? targetDir = await getExternalStorageDirectory(); 
       if (targetDir == null) return;
