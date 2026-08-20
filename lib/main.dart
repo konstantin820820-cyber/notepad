@@ -1501,13 +1501,11 @@ class _HomeScreenState extends State<HomeScreen>
 class EditorScreen extends StatefulWidget {
   final Note? note;
   final List<String> categories;
-  final String? initialCategory;
 
   const EditorScreen({
     super.key,
     this.note,
     required this.categories,
-    this.initialCategory,
   });
 
   @override
@@ -1524,7 +1522,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   late String _selectedCategory;
 
-  bool _savingMarkdown = false;
+  bool _exporting = false;
 
   // ==========================================================
   // INIT
@@ -1534,10 +1532,12 @@ class _EditorScreenState extends State<EditorScreen> {
   void initState() {
     super.initState();
 
-    _selectedCategory = _getInitialCategory();
+    _selectedCategory = 'Личное';
 
     if (widget.note != null) {
       _titleController.text = widget.note!.title;
+
+      _selectedCategory = widget.note!.category;
 
       try {
         final decoded = jsonDecode(
@@ -1547,45 +1547,32 @@ class _EditorScreenState extends State<EditorScreen> {
         _controller = FleatherController(
           document: ParchmentDocument.fromJson(decoded),
         );
-      } catch (_) {
+      } catch (e) {
         _controller = FleatherController();
       }
     } else {
       _controller = FleatherController();
+
+      final availableCategories =
+          widget.categories
+              .where((c) => c != 'Все')
+              .toList();
+
+      if (availableCategories.contains('Личное')) {
+        _selectedCategory = 'Личное';
+      } else if (availableCategories.isNotEmpty) {
+        _selectedCategory =
+            availableCategories.first;
+      }
     }
   }
 
   // ==========================================================
-  // INITIAL CATEGORY
+  // SAFE FILE NAME
   // ==========================================================
 
-  String _getInitialCategory() {
-    final available = widget.categories
-        .where((category) => category != 'Все')
-        .toList();
-
-    if (widget.initialCategory != null &&
-        available.contains(widget.initialCategory)) {
-      return widget.initialCategory!;
-    }
-
-    if (available.contains('Личное')) {
-      return 'Личное';
-    }
-
-    if (available.isNotEmpty) {
-      return available.first;
-    }
-
-    return 'Личное';
-  }
-
-  // ==========================================================
-  // NORMALIZE FILE NAME
-  // ==========================================================
-
-  String _safeFileName(String value) {
-    var result = value.trim();
+  String _safeFileName(String name) {
+    var result = name.trim();
 
     if (result.isEmpty) {
       result = 'Заметка';
@@ -1596,11 +1583,6 @@ class _EditorScreenState extends State<EditorScreen> {
       '_',
     );
 
-    result = result.replaceAll(
-      RegExp(r'\s+'),
-      ' ',
-    );
-
     return result;
   }
 
@@ -1608,11 +1590,7 @@ class _EditorScreenState extends State<EditorScreen> {
   // MARKDOWN ESCAPE
   // ==========================================================
 
-  String _escapeMarkdownText(String text) {
-    if (text.isEmpty) {
-      return '';
-    }
-
+  String _escapeMarkdown(String text) {
     return text
         .replaceAll(r'\', r'\\')
         .replaceAll('*', r'\*')
@@ -1623,257 +1601,312 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   // ==========================================================
-  // APPLY INLINE MARKDOWN
+  // GET FULL TEXT
   // ==========================================================
 
-  String _formatInlineMarkdown(
-    String text,
-    Map<String, dynamic> attributes,
-  ) {
-    if (text.isEmpty) {
-      return '';
-    }
-
-    var result = _escapeMarkdownText(text);
-
-    // Ссылка должна быть обработана
-    // после экранирования текста.
-    final link = attributes['link'];
-
-    if (attributes['code'] == true) {
-      result = '`$result`';
-    }
-
-    if (attributes['bold'] == true) {
-      result = '**$result**';
-    }
-
-    if (attributes['italic'] == true) {
-      result = '*$result*';
-    }
-
-    if (attributes['strike'] == true) {
-      result = '~~$result~~';
-    }
-
-    if (link != null) {
-      final url = link.toString();
-
-      result = '[$result]($url)';
-    }
-
-    return result;
+  String _getFullText() {
+    return _controller.document.toPlainText();
   }
 
   // ==========================================================
   // DELTA -> MARKDOWN
   //
-  // ВАЖНО:
-  // Delta Fleather хранит формат абзаца обычно
-  // на операции с символом "\n".
+  // Основной принцип:
   //
-  // Поэтому мы сначала собираем строку,
-  // а формат строки берём из атрибутов "\n".
+  // 1. Получаем ВСЮ информацию из ParchmentDocument.
+  // 2. Обычный текст никогда не теряем.
+  // 3. Перенос строки сохраняем.
+  // 4. Форматирование добавляем поверх текста.
+  //
+  // Fleather использует Delta, где line attributes
+  // хранятся на операции с "\n".
   // ==========================================================
 
-  String _deltaToMarkdown() {
-    final delta = _controller.document.toDelta().toJson();
+  String _documentToMarkdown() {
+    final delta =
+        _controller.document.toDelta().toJson();
 
-    final StringBuffer output = StringBuffer();
+    final StringBuffer result =
+        StringBuffer();
 
-    final String title = _titleController.text.trim();
+    // --------------------------------------------------------
+    // Заголовок заметки
+    // --------------------------------------------------------
+
+    final title =
+        _titleController.text.trim();
 
     if (title.isNotEmpty) {
-      output.writeln('# ${_escapeMarkdownText(title)}');
-      output.writeln();
+      result.write('# ');
+      result.write(
+        _escapeMarkdown(title),
+      );
+      result.write('\n\n');
     }
 
     String currentLine = '';
 
-    Map<String, dynamic> currentInlineAttributes = {};
+    Map<String, dynamic> currentInline = {};
 
-    void writeLine(
+    // --------------------------------------------------------
+    // Форматирование части текста
+    // --------------------------------------------------------
+
+    String formatInline(
       String text,
-      Map<String, dynamic> blockAttributes,
+      Map<String, dynamic> attributes,
     ) {
-      var result = text;
+      if (text.isEmpty) {
+        return '';
+      }
 
-      // Если в строке нет текста —
-      // сохраняем пустую строку.
-      if (result.isEmpty) {
-        output.writeln();
+      var value =
+          _escapeMarkdown(text);
+
+      if (attributes['code'] == true) {
+        value = '`$value`';
+      }
+
+      if (attributes['bold'] == true) {
+        value = '**$value**';
+      }
+
+      if (attributes['italic'] == true) {
+        value = '*$value*';
+      }
+
+      if (attributes['strike'] == true) {
+        value = '~~$value~~';
+      }
+
+      if (attributes['link'] != null) {
+        value =
+            '[$value](${attributes['link']})';
+      }
+
+      return value;
+    }
+
+    // --------------------------------------------------------
+    // Завершить строку
+    // --------------------------------------------------------
+
+    void finishLine(
+      Map<String, dynamic> lineAttributes,
+    ) {
+      var line = currentLine;
+
+      // Пустая строка.
+      if (line.isEmpty) {
+        result.write('\n');
+        currentLine = '';
+        currentInline = {};
         return;
       }
 
       // ------------------------------------------------------
-      // INLINE
+      // Заголовки
       // ------------------------------------------------------
 
-      result = _formatInlineMarkdown(
-        result,
-        currentInlineAttributes,
-      );
+      final heading =
+          lineAttributes['heading'] ??
+          lineAttributes['header'];
 
-      // ------------------------------------------------------
-      // BLOCK
-      // ------------------------------------------------------
-
-      final header = blockAttributes['header'];
-
-      if (header == 1) {
-        result = '# $result';
-      } else if (header == 2) {
-        result = '## $result';
-      } else if (header == 3) {
-        result = '### $result';
-      } else if (blockAttributes['blockquote'] == true) {
-        result = '> $result';
-      } else if (blockAttributes['list'] == 'bullet') {
-        result = '- $result';
-      } else if (blockAttributes['list'] == 'ordered') {
-        result = '1. $result';
+      if (heading == 1) {
+        line = '# $line';
+      } else if (heading == 2) {
+        line = '## $line';
+      } else if (heading == 3) {
+        line = '### $line';
       }
 
-      output.writeln(result);
+      // ------------------------------------------------------
+      // Цитата
+      // ------------------------------------------------------
+
+      if (lineAttributes['blockquote'] == true ||
+          lineAttributes['block'] == 'quote') {
+        line = '> $line';
+      }
+
+      // ------------------------------------------------------
+      // Списки
+      // ------------------------------------------------------
+
+      final list =
+          lineAttributes['list'];
+
+      if (list == 'bullet') {
+        line = '- $line';
+      } else if (list == 'ordered' ||
+          list == 'number') {
+        line = '1. $line';
+      }
+
+      result.write(line);
+      result.write('\n');
+
+      currentLine = '';
+      currentInline = {};
     }
 
-    for (final rawOperation in delta) {
-      if (rawOperation is! Map) {
+    // ========================================================
+    // РАЗБОР DELTA
+    // ========================================================
+
+    for (final operation in delta) {
+      if (operation is! Map) {
         continue;
       }
 
-      if (!rawOperation.containsKey('insert')) {
+      if (!operation.containsKey('insert')) {
         continue;
       }
 
-      final insert = rawOperation['insert'];
+      final insert =
+          operation['insert'];
 
-      final operationAttributes =
-          rawOperation['attributes'] is Map
+      final attributes =
+          operation['attributes'] is Map
               ? Map<String, dynamic>.from(
-                  rawOperation['attributes'],
+                  operation['attributes'],
                 )
               : <String, dynamic>{};
 
-      // ======================================================
-      // TEXT
-      // ======================================================
+      // ------------------------------------------------------
+      // ТЕКСТ
+      // ------------------------------------------------------
 
       if (insert is String) {
-        final parts = insert.split('\n');
+        final pieces =
+            insert.split('\n');
 
-        for (int i = 0; i < parts.length; i++) {
-          final part = parts[i];
+        for (int i = 0;
+            i < pieces.length;
+            i++) {
+          final piece =
+              pieces[i];
 
-          if (part.isNotEmpty) {
-            currentLine += _formatInlineMarkdown(
-              part,
-              operationAttributes,
+          if (piece.isNotEmpty) {
+            currentLine +=
+                formatInline(
+              piece,
+              attributes,
             );
+
+            currentInline =
+                attributes;
           }
 
-          // Есть перенос строки.
-          if (i < parts.length - 1) {
-            final blockAttributes =
-                Map<String, dynamic>.from(
-              operationAttributes,
-            );
-
-            // Если текущая операция содержит только
-            // "\n" с форматированием абзаца,
-            // используем именно эти атрибуты.
-            writeLine(
-              currentLine,
-              blockAttributes,
-            );
-
-            currentLine = '';
-            currentInlineAttributes = {};
-          } else {
-            if (part.isNotEmpty) {
-              currentInlineAttributes =
-                  Map<String, dynamic>.from(
-                operationAttributes,
-              );
-            }
+          // Fleather хранит формат строки
+          // на символе "\n".
+          if (i < pieces.length - 1) {
+            finishLine(attributes);
           }
         }
 
         continue;
       }
 
-      // ======================================================
-      // EMBED / IMAGE
-      // ======================================================
+      // ------------------------------------------------------
+      // EMBED
+      // ------------------------------------------------------
 
       if (insert is Map) {
         if (insert.containsKey('image')) {
-          final imageSource =
+          final image =
               insert['image']?.toString() ?? '';
 
           if (currentLine.isNotEmpty) {
-            output.writeln(currentLine);
+            result.write(
+              currentLine,
+            );
+            result.write('\n\n');
+
             currentLine = '';
           }
 
-          if (imageSource.isNotEmpty) {
-            output.writeln(
-              '![Изображение]($imageSource)',
+          if (image.isNotEmpty) {
+            result.write(
+              '![Изображение]($image)',
             );
-            output.writeln();
+            result.write('\n\n');
           }
         }
       }
     }
 
-    // ========================================================
-    // ОСТАТОК ТЕКСТА
-    // ========================================================
+    // --------------------------------------------------------
+    // Последняя строка
+    // --------------------------------------------------------
 
     if (currentLine.isNotEmpty) {
-      output.writeln(currentLine);
+      result.write(currentLine);
+      result.write('\n');
     }
 
-    var result = output.toString();
-
-    // Убираем слишком много пустых строк в конце.
-    result = result.trimRight();
-
-    if (result.isEmpty) {
-      result = '# ${title.isEmpty ? 'Заметка' : _escapeMarkdownText(title)}';
-    }
-
-    result += '\n';
-
-    return result;
+    return result
+        .toString()
+        .trimRight() +
+        '\n';
   }
 
   // ==========================================================
-  // SAVE MARKDOWN
+  // EXPORT MARKDOWN
   // ==========================================================
 
-  Future<void> _saveToMarkdownFile() async {
-    if (_savingMarkdown) {
+  Future<void> _exportMarkdown() async {
+    if (_exporting) {
       return;
     }
 
     setState(() {
-      _savingMarkdown = true;
+      _exporting = true;
     });
 
     try {
-      final markdown = _deltaToMarkdown();
+      // ======================================================
+      // ВОТ ЭТО КЛЮЧЕВОЙ МОМЕНТ
+      //
+      // Проверяем реальное содержимое документа.
+      // ======================================================
 
-      final bytes = Uint8List.fromList(
+      final plainText =
+          _getFullText();
+
+      if (plainText.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'В тексте заметки нет содержимого.',
+                ),
+              ),
+            );
+        }
+
+        return;
+      }
+
+      final markdown =
+          _documentToMarkdown();
+
+      final bytes =
+          Uint8List.fromList(
         utf8.encode(markdown),
       );
 
-      final fileName =
-          '${_safeFileName(_titleController.text)}.md';
+      final title =
+          _safeFileName(
+        _titleController.text,
+      );
 
-      final params = SaveFileDialogParams(
+      final params =
+          SaveFileDialogParams(
         data: bytes,
-        fileName: fileName,
+        fileName: '$title.md',
         mimeTypesFilter: const [
           'text/markdown',
           'text/plain',
@@ -1881,7 +1914,7 @@ class _EditorScreenState extends State<EditorScreen> {
         localOnly: true,
       );
 
-      final savedPath =
+      final path =
           await FlutterFileDialog.saveFile(
         params: params,
       );
@@ -1890,7 +1923,7 @@ class _EditorScreenState extends State<EditorScreen> {
         return;
       }
 
-      if (savedPath == null) {
+      if (path == null) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
@@ -1909,9 +1942,11 @@ class _EditorScreenState extends State<EditorScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Markdown сохранён:\n$savedPath',
+              'Markdown сохранён.\n'
+              'Размер: ${bytes.length} байт',
             ),
-            duration: const Duration(seconds: 4),
+            duration:
+                const Duration(seconds: 4),
           ),
         );
     } catch (e) {
@@ -1924,15 +1959,16 @@ class _EditorScreenState extends State<EditorScreen> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Ошибка сохранения Markdown:\n$e',
+              'Ошибка экспорта Markdown:\n$e',
             ),
-            duration: const Duration(seconds: 5),
+            duration:
+                const Duration(seconds: 5),
           ),
         );
     } finally {
       if (mounted) {
         setState(() {
-          _savingMarkdown = false;
+          _exporting = false;
         });
       }
     }
@@ -1943,26 +1979,24 @@ class _EditorScreenState extends State<EditorScreen> {
   // ==========================================================
 
   void _saveNote() {
-    final contentJson = jsonEncode(
-      _controller.document.toDelta().toJson(),
+    final content =
+        jsonEncode(
+      _controller.document.toJson(),
     );
 
     Navigator.pop(
       context,
       {
-        'title': _titleController.text.trim(),
-        'contentJson': contentJson,
-        'category': _selectedCategory,
+        'title':
+            _titleController.text.trim(),
+
+        'contentJson':
+            content,
+
+        'category':
+            _selectedCategory,
       },
     );
-  }
-
-  // ==========================================================
-  // CONFIRM CLOSE
-  // ==========================================================
-
-  Future<bool> _confirmClose() async {
-    return true;
   }
 
   // ==========================================================
@@ -1971,187 +2005,177 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = widget.categories
-        .where((category) => category != 'Все')
-        .toList();
+    final categories =
+        widget.categories
+            .where((c) => c != 'Все')
+            .toList();
 
-    return PopScope(
-      canPop: true,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Редактор'),
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            const Text('Редактор'),
 
-          actions: [
-            // --------------------------------------------------
-            // EXPORT MARKDOWN
-            // --------------------------------------------------
+        actions: [
+          // --------------------------------------------------
+          // MARKDOWN
+          // --------------------------------------------------
 
-            IconButton(
-              tooltip: 'Экспорт в Markdown',
-              onPressed:
-                  _savingMarkdown
-                      ? null
-                      : _saveToMarkdownFile,
-              icon: _savingMarkdown
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.description_outlined,
+          IconButton(
+            tooltip:
+                'Экспорт в Markdown',
+
+            onPressed:
+                _exporting
+                    ? null
+                    : _exportMarkdown,
+
+            icon: _exporting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2,
                     ),
+                  )
+                : const Icon(
+                    Icons.description_outlined,
+                  ),
+          ),
+
+          // --------------------------------------------------
+          // SAVE
+          // --------------------------------------------------
+
+          IconButton(
+            tooltip:
+                'Сохранить',
+
+            onPressed:
+                _saveNote,
+
+            icon:
+                const Icon(
+              Icons.save,
             ),
+          ),
 
-            // --------------------------------------------------
-            // SAVE NOTE
-            // --------------------------------------------------
+          // --------------------------------------------------
+          // CATEGORY
+          // --------------------------------------------------
 
-            IconButton(
-              tooltip: 'Сохранить заметку',
-              onPressed: _saveNote,
-              icon: const Icon(
-                Icons.save,
-              ),
-            ),
-          ],
-        ),
+          if (categories.isNotEmpty)
+            DropdownButton<String>(
+              value:
+                  categories.contains(
+                _selectedCategory,
+              )
+                      ? _selectedCategory
+                      : categories.first,
 
-        body: Column(
-          children: [
-            // ==================================================
-            // TITLE
-            // ==================================================
+              underline:
+                  const SizedBox(),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                4,
-              ),
-
-              child: TextField(
-                controller: _titleController,
-                textInputAction:
-                    TextInputAction.next,
-
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
-                ),
-
-                decoration:
-                    const InputDecoration(
-                  hintText: 'Название заметки',
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-
-            // ==================================================
-            // CATEGORY
-            // ==================================================
-
-            if (categories.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
-
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.folder_outlined,
-                      size: 18,
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    const Text(
-                      'Раздел:',
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    DropdownButton<String>(
-                      value: categories.contains(
-                        _selectedCategory,
+              items:
+                  categories
+                      .map(
+                        (category) =>
+                            DropdownMenuItem<
+                                String>(
+                          value: category,
+                          child:
+                              Text(category),
+                        ),
                       )
-                          ? _selectedCategory
-                          : categories.first,
+                      .toList(),
 
-                      items: categories
-                          .map(
-                            (category) =>
-                                DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(category),
-                            ),
-                          )
-                          .toList(),
+              onChanged:
+                  (value) {
+                if (value == null) {
+                  return;
+                }
 
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
+                setState(() {
+                  _selectedCategory =
+                      value;
+                });
+              },
+            ),
+        ],
+      ),
 
-                        setState(() {
-                          _selectedCategory = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
+      body: Column(
+        children: [
+          // ==================================================
+          // TITLE
+          // ==================================================
+
+          Padding(
+            padding:
+                const EdgeInsets.all(16),
+
+            child: TextField(
+              controller:
+                  _titleController,
+
+              style:
+                  const TextStyle(
+                fontSize: 22,
+                fontWeight:
+                    FontWeight.bold,
               ),
 
-            const Divider(
-              height: 1,
-            ),
+              decoration:
+                  const InputDecoration(
+                hintText:
+                    'Заголовок',
 
-            // ==================================================
-            // TOOLBAR
-            // ==================================================
-
-            Material(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest,
-
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-
-                child: FleatherToolbar.basic(
-                  controller: _controller,
-                ),
+                border:
+                    InputBorder.none,
               ),
             ),
+          ),
 
-            // ==================================================
-            // EDITOR
-            // ==================================================
+          const Divider(
+            height: 1,
+          ),
 
-            Expanded(
-              child: FleatherEditor(
-                controller: _controller,
-                focusNode: _focusNode,
+          // ==================================================
+          // EDITOR
+          // ==================================================
 
-                padding: const EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  120,
-                ),
+          Expanded(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
 
-                expands: true,
-                scrollable: true,
-                autofocus: false,
+              child:
+                  FleatherEditor(
+                controller:
+                    _controller,
+
+                focusNode:
+                    _focusNode,
               ),
             ),
-          ],
-        ),
+          ),
+
+          // ==================================================
+          // TOOLBAR
+          // ==================================================
+
+          Material(
+            elevation: 4,
+
+            child:
+                FleatherToolbar.basic(
+              controller:
+                  _controller,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2163,7 +2187,9 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void dispose() {
     _focusNode.dispose();
+
     _controller.dispose();
+
     _titleController.dispose();
 
     super.dispose();
