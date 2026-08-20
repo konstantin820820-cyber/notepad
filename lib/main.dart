@@ -1621,83 +1621,212 @@ class _EditorScreenState extends State<EditorScreen> {
 
 void _saveNote() {
   if (_controller == null) {
-    debugPrint('========== FLEATHER DIAGNOSTIC ==========');
-    debugPrint('ERROR: _controller == null');
-    debugPrint('==========================================');
+    showDialog(
+      context: context,
+      builder: (context) {
+        return const AlertDialog(
+          title: Text('Диагностика'),
+          content: Text(
+            '_controller == null\n\n'
+            'FleatherController не создан.',
+          ),
+        );
+      },
+    );
     return;
   }
 
   try {
     final document = _controller!.document;
 
+    // --------------------------------------------------------
+    // Получаем обычный текст
+    // --------------------------------------------------------
+
     final plainText = document.toPlainText();
+
+    // --------------------------------------------------------
+    // Получаем Delta
+    // --------------------------------------------------------
+
     final delta = document.toDelta();
+
+    // --------------------------------------------------------
+    // Получаем JSON Delta
+    // --------------------------------------------------------
+
     final deltaJson = delta.toJson();
+
     final contentJson = jsonEncode(deltaJson);
 
-    debugPrint('');
-    debugPrint('========== FLEATHER DIAGNOSTIC ==========');
+    // --------------------------------------------------------
+    // Формируем диагностический текст
+    // --------------------------------------------------------
 
-    debugPrint('TITLE: "${_titleController.text}"');
+    final diagnostic = StringBuffer();
 
-    debugPrint(
-      'PLAIN TEXT LENGTH: ${plainText.length}',
+    diagnostic.writeln(
+      '========== FLEATHER DIAGNOSTIC ==========\n',
     );
 
-    debugPrint('PLAIN TEXT:');
-    debugPrint(
-      plainText.isEmpty ? '[EMPTY]' : plainText,
+    diagnostic.writeln(
+      'TITLE:',
     );
 
-    debugPrint('DELTA:');
-    debugPrint(delta.toString());
-
-    debugPrint('DELTA JSON:');
-    debugPrint(jsonEncode(deltaJson));
-
-    debugPrint(
-      'DELTA JSON LENGTH: ${jsonEncode(deltaJson).length}',
+    diagnostic.writeln(
+      _titleController.text.isEmpty
+          ? '[EMPTY]'
+          : _titleController.text,
     );
 
-    debugPrint('CONTENT JSON LENGTH: ${contentJson.length}');
+    diagnostic.writeln('');
 
-    debugPrint('CONTENT JSON TO SAVE:');
-    debugPrint(contentJson);
+    diagnostic.writeln(
+      'PLAIN TEXT LENGTH:',
+    );
 
-    debugPrint('==========================================');
-    debugPrint('');
+    diagnostic.writeln(
+      plainText.length.toString(),
+    );
 
-    Navigator.pop(
-      context,
-      {
-        'title': _titleController.text.trim(),
-        'contentJson': contentJson,
-        'category': _selectedCategory,
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      'PLAIN TEXT:',
+    );
+
+    diagnostic.writeln(
+      plainText.isEmpty
+          ? '[EMPTY]'
+          : plainText,
+    );
+
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      'DELTA:',
+    );
+
+    diagnostic.writeln(
+      delta.toString(),
+    );
+
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      'DELTA JSON:',
+    );
+
+    diagnostic.writeln(
+      jsonEncode(deltaJson),
+    );
+
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      'DELTA JSON LENGTH:',
+    );
+
+    diagnostic.writeln(
+      contentJson.length.toString(),
+    );
+
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      'CONTENT JSON TO SAVE:',
+    );
+
+    diagnostic.writeln(
+      contentJson,
+    );
+
+    diagnostic.writeln('');
+
+    diagnostic.writeln(
+      '==========================================',
+    );
+
+    // --------------------------------------------------------
+    // Показываем результат прямо на телефоне
+    // --------------------------------------------------------
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Диагностика Fleather',
+          ),
+
+          content: SizedBox(
+            width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.65,
+
+            child: SingleChildScrollView(
+              child: SelectableText(
+                diagnostic.toString(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text(
+                'Закрыть',
+              ),
+            ),
+          ],
+        );
       },
     );
+
+    // --------------------------------------------------------
+    // ВАЖНО:
+    // Пока диагностика ничего НЕ сохраняет.
+    //
+    // После получения результата мы решим,
+    // как именно сохранять документ.
+    // --------------------------------------------------------
+
   } catch (e, stackTrace) {
-    debugPrint('');
-    debugPrint('========== FLEATHER ERROR ==========');
-    debugPrint('ERROR: $e');
-    debugPrint('STACK TRACE:');
-    debugPrint(stackTrace.toString());
-    debugPrint('====================================');
-    debugPrint('');
-
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Ошибка чтения редактора:\n$e',
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Ошибка Fleather',
           ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+
+          content: SingleChildScrollView(
+            child: SelectableText(
+              'ОШИБКА:\n\n'
+              '$e\n\n'
+              'STACK TRACE:\n\n'
+              '$stackTrace',
+            ),
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text(
+                'Закрыть',
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
