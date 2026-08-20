@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +24,6 @@ class LocalNotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Локальный Блокнот',
-
       debugShowCheckedModeBanner: false,
 
       localizationsDelegates: const [
@@ -81,7 +80,7 @@ class Note {
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
       id: map['id']?.toString() ??
-          DateTime.now().millisecondsSinceEpoch.toString(),
+          DateTime.now().microsecondsSinceEpoch.toString(),
 
       title: map['title']?.toString() ?? '',
 
@@ -90,13 +89,14 @@ class Note {
               '[{"insert":"\\n"}]',
 
       category:
-          map['category']?.toString() ?? 'Личное',
+          map['category']?.toString() ??
+              'Личное',
     );
   }
 }
 
 // ============================================================
-// HOME SCREEN
+// HOME
 // ============================================================
 
 class HomeScreen extends StatefulWidget {
@@ -108,6 +108,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
+
   List<Note> _notes = [];
 
   List<String> _categories = [
@@ -157,8 +158,9 @@ class _HomeScreenState extends State<HomeScreen>
         'Покупки',
       ];
     } else {
-      categories =
-          List<String>.from(savedCategories);
+      categories = List<String>.from(
+        savedCategories,
+      );
 
       categories.removeWhere(
         (c) => c == 'Все',
@@ -172,7 +174,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (notesString != null &&
         notesString.isNotEmpty) {
       try {
-        final decoded = jsonDecode(notesString);
+        final decoded = jsonDecode(
+          notesString,
+        );
 
         if (decoded is List) {
           notes = decoded
@@ -200,25 +204,19 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
+    _notes = notes;
+    _categories = categories;
+
     _createTabController(
       selectedIndex: 0,
-      callSetState: false,
+      updateState: false,
     );
 
-    if (!mounted) {
-      return;
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
     }
-
-    setState(() {
-      _categories = categories;
-      _notes = notes;
-      _loading = false;
-    });
-
-    _createTabController(
-      selectedIndex: 0,
-      callSetState: false,
-    );
   }
 
   // ==========================================================
@@ -238,7 +236,9 @@ class _HomeScreenState extends State<HomeScreen>
       'local_notes_v5',
       jsonEncode(
         _notes
-            .map((note) => note.toMap())
+            .map(
+              (note) => note.toMap(),
+            )
             .toList(),
       ),
     );
@@ -250,24 +250,21 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _createTabController({
     int selectedIndex = 0,
-    bool callSetState = true,
+    bool updateState = true,
   }) {
     _tabController?.dispose();
-
-    if (_categories.isEmpty) {
-      return;
-    }
 
     _tabController = TabController(
       length: _categories.length,
       vsync: this,
     );
 
-    final safeIndex =
-        selectedIndex.clamp(
-      0,
-      _categories.length - 1,
-    );
+    final int safeIndex =
+        selectedIndex
+            .clamp(
+              0,
+              _categories.length - 1,
+            );
 
     _tabController!.index = safeIndex;
 
@@ -277,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
 
-    if (callSetState && mounted) {
+    if (updateState && mounted) {
       setState(() {});
     }
   }
@@ -293,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen>
     final name =
         await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
+      builder: (context) {
         return AlertDialog(
           title: const Text(
             'Новый раздел',
@@ -307,19 +304,18 @@ class _HomeScreenState extends State<HomeScreen>
             decoration:
                 const InputDecoration(
               labelText: 'Название',
-              hintText: 'Например: Статьи',
+              hintText:
+                  'Например: Статьи',
             ),
           ),
 
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child:
-                  const Text('Отмена'),
+              onPressed: () =>
+                  Navigator.pop(context),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
@@ -329,13 +325,14 @@ class _HomeScreenState extends State<HomeScreen>
 
                 if (value.isNotEmpty) {
                   Navigator.pop(
-                    dialogContext,
+                    context,
                     value,
                   );
                 }
               },
-              child:
-                  const Text('Добавить'),
+              child: const Text(
+                'Добавить',
+              ),
             ),
           ],
         );
@@ -349,7 +346,8 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final newName = name.trim();
+    final newName =
+        name.trim();
 
     if (_categories.contains(newName)) {
       _showMessage(
@@ -393,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen>
     final newName =
         await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
+      builder: (context) {
         return AlertDialog(
           title: const Text(
             'Переименовать раздел',
@@ -408,13 +406,11 @@ class _HomeScreenState extends State<HomeScreen>
 
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child:
-                  const Text('Отмена'),
+              onPressed: () =>
+                  Navigator.pop(context),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
@@ -424,13 +420,14 @@ class _HomeScreenState extends State<HomeScreen>
 
                 if (value.isNotEmpty) {
                   Navigator.pop(
-                    dialogContext,
+                    context,
                     value,
                   );
                 }
               },
-              child:
-                  const Text('Сохранить'),
+              child: const Text(
+                'Сохранить',
+              ),
             ),
           ],
         );
@@ -439,17 +436,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     controller.dispose();
 
-    if (newName == null) {
+    if (newName == null ||
+        newName.trim().isEmpty ||
+        newName.trim() == category) {
       return;
     }
 
     final trimmed =
         newName.trim();
-
-    if (trimmed.isEmpty ||
-        trimmed == category) {
-      return;
-    }
 
     if (_categories.contains(trimmed)) {
       _showMessage(
@@ -458,31 +452,26 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    setState(() {
-      final index =
-          _categories.indexOf(category);
+    final oldIndex =
+        _categories.indexOf(category);
 
-      if (index != -1) {
-        _categories[index] =
+    setState(() {
+      if (oldIndex != -1) {
+        _categories[oldIndex] =
             trimmed;
       }
 
       for (final note in _notes) {
         if (note.category ==
             category) {
-          note.category = trimmed;
+          note.category =
+              trimmed;
         }
       }
     });
 
-    final selectedIndex =
-        _categories.indexOf(trimmed);
-
     _createTabController(
-      selectedIndex:
-          selectedIndex >= 0
-              ? selectedIndex
-              : 0,
+      selectedIndex: oldIndex,
     );
 
     await _saveData();
@@ -515,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen>
     final confirmed =
         await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
+      builder: (context) {
         return AlertDialog(
           title: const Text(
             'Удалить раздел?',
@@ -532,14 +521,14 @@ class _HomeScreenState extends State<HomeScreen>
 
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child:
-                  const Text('Отмена'),
+              onPressed: () =>
+                  Navigator.pop(
+                context,
+                false,
+              ),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
@@ -548,14 +537,14 @@ class _HomeScreenState extends State<HomeScreen>
                 backgroundColor:
                     Colors.red,
               ),
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              child:
-                  const Text('Удалить'),
+              onPressed: () =>
+                  Navigator.pop(
+                context,
+                true,
+              ),
+              child: const Text(
+                'Удалить',
+              ),
             ),
           ],
         );
@@ -566,22 +555,23 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final otherCategories =
-        _categories
-            .where(
-              (c) =>
-                  c != 'Все' &&
-                  c != category,
-            )
-            .toList();
-
     final targetCategory =
-        otherCategories.isNotEmpty
-            ? otherCategories.first
-            : 'Личное';
+        _categories.firstWhere(
+      (c) =>
+          c != 'Все' &&
+          c != category,
+      orElse: () => 'Личное',
+    );
+
+    final oldIndex =
+        _categories.indexOf(
+      category,
+    );
 
     setState(() {
-      _categories.remove(category);
+      _categories.remove(
+        category,
+      );
 
       for (final note in _notes) {
         if (note.category ==
@@ -592,25 +582,14 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
 
-    if (_categories.length ==
-        1) {
-      // Если удалили последний пользовательский
-      // раздел — создаём «Личное».
-      _categories.add(
-        'Личное',
-      );
-
-      for (final note in _notes) {
-        if (note.category ==
-            category) {
-          note.category =
-              'Личное';
-        }
-      }
-    }
+    final safeIndex =
+        (oldIndex - 1).clamp(
+      0,
+      _categories.length - 1,
+    );
 
     _createTabController(
-      selectedIndex: 0,
+      selectedIndex: safeIndex,
     );
 
     await _saveData();
@@ -628,7 +607,7 @@ class _HomeScreenState extends State<HomeScreen>
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) {
+      builder: (context) {
         return StatefulBuilder(
           builder:
               (context, modalSetState) {
@@ -657,10 +636,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
 
                     const Text(
-                      'Удерживайте раздел и '
-                      'перетащите его',
-                      style:
-                          TextStyle(
+                      'Удерживайте раздел '
+                      'и перетащите его',
+                      style: TextStyle(
                         color:
                             Colors.white54,
                       ),
@@ -699,30 +677,17 @@ class _HomeScreenState extends State<HomeScreen>
                           final toIndex =
                               newIndex + 1;
 
-                          if (fromIndex <
-                                  1 ||
-                              fromIndex >=
-                                  _categories
-                                      .length) {
-                            return;
-                          }
-
-                          if (toIndex <
-                                  1 ||
-                              toIndex >=
-                                  _categories
-                                      .length) {
-                            return;
-                          }
-
                           final selectedCategory =
-                              _tabController
-                                  ?.index !=
-                                  null
-                                  ? _categories[
-                                      _tabController!
-                                          .index]
-                                  : 'Все';
+                              _categories[
+                                  (_tabController
+                                              ?.index ??
+                                          0)
+                                      .clamp(
+                                    0,
+                                    _categories
+                                            .length -
+                                        1,
+                                  )];
 
                           setState(() {
                             final item =
@@ -731,7 +696,8 @@ class _HomeScreenState extends State<HomeScreen>
                               fromIndex,
                             );
 
-                            _categories.insert(
+                            _categories
+                                .insert(
                               toIndex,
                               item,
                             );
@@ -741,18 +707,12 @@ class _HomeScreenState extends State<HomeScreen>
                             () {},
                           );
 
-                          final selectedNewIndex =
-                              _categories
-                                  .indexOf(
-                            selectedCategory,
-                          );
-
                           _createTabController(
                             selectedIndex:
-                                selectedNewIndex >=
-                                        0
-                                    ? selectedNewIndex
-                                    : 0,
+                                _categories
+                                    .indexOf(
+                              selectedCategory,
+                            ),
                           );
 
                           await _saveData();
@@ -822,8 +782,7 @@ class _HomeScreenState extends State<HomeScreen>
                                       Icons
                                           .delete_outline,
                                       color:
-                                          Colors
-                                              .redAccent,
+                                          Colors.redAccent,
                                     ),
 
                                     onPressed:
@@ -847,8 +806,9 @@ class _HomeScreenState extends State<HomeScreen>
 
                     Padding(
                       padding:
-                          const EdgeInsets
-                              .all(16),
+                          const EdgeInsets.all(
+                        16,
+                      ),
 
                       child:
                           SizedBox(
@@ -856,8 +816,7 @@ class _HomeScreenState extends State<HomeScreen>
                             double.infinity,
 
                         child:
-                            FilledButton
-                                .icon(
+                            FilledButton.icon(
                           onPressed:
                               () async {
                             Navigator.pop(
@@ -921,12 +880,9 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    if (newIndex < 0) {
-      newIndex = 0;
-    }
-
-    if (newIndex >=
-        visibleNotes.length) {
+    if (newIndex < 0 ||
+        newIndex >=
+            visibleNotes.length) {
       newIndex =
           visibleNotes.length - 1;
     }
@@ -976,7 +932,7 @@ class _HomeScreenState extends State<HomeScreen>
     final confirmed =
         await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
+      builder: (context) {
         return AlertDialog(
           title: const Text(
             'Удалить заметку?',
@@ -990,14 +946,14 @@ class _HomeScreenState extends State<HomeScreen>
 
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child:
-                  const Text('Отмена'),
+              onPressed: () =>
+                  Navigator.pop(
+                context,
+                false,
+              ),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
@@ -1007,15 +963,15 @@ class _HomeScreenState extends State<HomeScreen>
                     Colors.red,
               ),
 
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
+              onPressed: () =>
+                  Navigator.pop(
+                context,
+                true,
+              ),
 
-              child:
-                  const Text('Удалить'),
+              child: const Text(
+                'Удалить',
+              ),
             ),
           ],
         );
@@ -1097,25 +1053,21 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _addNote() async {
-    final currentIndex =
+    final int currentIndex =
         _tabController?.index ?? 0;
 
-    String defaultCategory;
+    String defaultCategory =
+        'Личное';
 
     if (currentIndex > 0 &&
         currentIndex <
             _categories.length) {
       defaultCategory =
-          _categories[
-              currentIndex];
-    } else if (_categories
-        .length >
+          _categories[currentIndex];
+    } else if (_categories.length >
         1) {
       defaultCategory =
           _categories[1];
-    } else {
-      defaultCategory =
-          'Личное';
     }
 
     final result =
@@ -1140,8 +1092,7 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _notes.add(
         Note(
-          id: DateTime
-              .now()
+          id: DateTime.now()
               .microsecondsSinceEpoch
               .toString(),
 
@@ -1177,7 +1128,9 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    ScaffoldMessenger.of(context)
+    ScaffoldMessenger.of(
+      context,
+    )
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
@@ -1200,8 +1153,7 @@ class _HomeScreenState extends State<HomeScreen>
     BuildContext context,
   ) {
     if (_loading ||
-        _tabController ==
-            null) {
+        _tabController == null) {
       return const Scaffold(
         body: Center(
           child:
@@ -1232,308 +1184,290 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
 
-        bottom:
-            TabBar(
+        bottom: TabBar(
           controller:
               _tabController,
 
           isScrollable:
               true,
 
-          tabs:
-              _categories
-                  .map(
-                    (category) =>
-                        Tab(
-                      text:
-                          category,
-                    ),
-                  )
-                  .toList(),
+          tabs: _categories
+              .map(
+                (category) =>
+                    Tab(
+                  text:
+                      category,
+                ),
+              )
+              .toList(),
         ),
       ),
 
-      body:
-          TabBarView(
+      body: TabBarView(
         controller:
             _tabController,
 
         children:
-            _categories
-                .map(
-                  (category) {
-                    final filteredNotes =
-                        category ==
-                                'Все'
-                            ? List<
-                                Note>.from(
-                                _notes,
-                              )
-                            : _notes
-                                .where(
-                                  (n) =>
-                                      n.category ==
-                                      category,
-                                )
-                                .toList();
+            _categories.map(
+          (category) {
+            final filteredNotes =
+                category == 'Все'
+                    ? List<Note>.from(
+                        _notes,
+                      )
+                    : _notes
+                        .where(
+                          (n) =>
+                              n.category ==
+                              category,
+                        )
+                        .toList();
 
-                    if (filteredNotes
-                        .isEmpty) {
-                      return Center(
-                        child:
-                            Text(
-                          'Здесь пока пусто',
-                          style:
-                              TextStyle(
-                            color: Colors
-                                .white
-                                .withOpacity(
-                              0.54,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
+            if (filteredNotes
+                .isEmpty) {
+              return Center(
+                child: Text(
+                  'Здесь пока пусто',
+                  style:
+                      TextStyle(
+                    color:
+                        Colors.white
+                            .withOpacity(
+                      0.54,
+                    ),
+                  ),
+                ),
+              );
+            }
 
-                    return Padding(
-                      padding:
-                          const EdgeInsets
-                              .all(8),
+            return Padding(
+              padding:
+                  const EdgeInsets.all(
+                8,
+              ),
+
+              child:
+                  ReorderableGridView
+                      .builder(
+                padding:
+                    const EdgeInsets.only(
+                  bottom: 90,
+                ),
+
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount:
+                      2,
+
+                  crossAxisSpacing:
+                      8,
+
+                  mainAxisSpacing:
+                      8,
+
+                  childAspectRatio:
+                      1.1,
+                ),
+
+                itemCount:
+                    filteredNotes.length,
+
+                dragStartDelay:
+                    const Duration(
+                  milliseconds: 450,
+                ),
+
+                onReorder:
+                    (
+                  oldIndex,
+                  newIndex,
+                ) {
+                  _reorderNotes(
+                    category,
+                    oldIndex,
+                    newIndex,
+                  );
+                },
+
+                itemBuilder:
+                    (
+                  context,
+                  index,
+                ) {
+                  final note =
+                      filteredNotes[
+                          index];
+
+                  return Card(
+                    key: ValueKey(
+                      note.id,
+                    ),
+
+                    child: InkWell(
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        12,
+                      ),
+
+                      onTap: () =>
+                          _editNote(
+                        note,
+                      ),
 
                       child:
-                          ReorderableGridView
-                              .builder(
+                          Padding(
                         padding:
                             const EdgeInsets
-                                .only(
-                          bottom: 90,
+                                .all(
+                          12,
                         ),
 
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                              2,
+                        child:
+                            Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment
+                                  .start,
 
-                          crossAxisSpacing:
-                              8,
+                          children: [
+                            Row(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment
+                                      .start,
 
-                          mainAxisSpacing:
-                              8,
+                              children: [
+                                Expanded(
+                                  child:
+                                      Text(
+                                    note.title.isEmpty
+                                        ? 'Без названия'
+                                        : note.title,
 
-                          childAspectRatio:
-                              1.1,
-                        ),
-
-                        itemCount:
-                            filteredNotes
-                                .length,
-
-                        dragStartDelay:
-                            const Duration(
-                          milliseconds:
-                              450,
-                        ),
-
-                        onReorder:
-                            (
-                          oldIndex,
-                          newIndex,
-                        ) {
-                          _reorderNotes(
-                            category,
-                            oldIndex,
-                            newIndex,
-                          );
-                        },
-
-                        itemBuilder:
-                            (
-                          context,
-                          index,
-                        ) {
-                          final note =
-                              filteredNotes[
-                                  index];
-
-                          return Card(
-                            key:
-                                ValueKey(
-                              note.id,
-                            ),
-
-                            child:
-                                InkWell(
-                              borderRadius:
-                                  BorderRadius
-                                      .circular(
-                                12,
-                              ),
-
-                              onTap:
-                                  () =>
-                                      _editNote(
-                                note,
-                              ),
-
-                              child:
-                                  Padding(
-                                padding:
-                                    const EdgeInsets
-                                        .all(
-                                  12,
-                                ),
-
-                                child:
-                                    Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment
-                                          .start,
-
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
-
-                                      children: [
-                                        Expanded(
-                                          child:
-                                              Text(
-                                            note.title.isEmpty
-                                                ? 'Без названия'
-                                                : note.title,
-
-                                            style:
-                                                const TextStyle(
-                                              fontWeight:
-                                                  FontWeight.bold,
-
-                                              fontSize:
-                                                  16,
-                                            ),
-
-                                            maxLines:
-                                                2,
-
-                                            overflow:
-                                                TextOverflow
-                                                    .ellipsis,
-                                          ),
-                                        ),
-
-                                        PopupMenuButton<
-                                            String>(
-                                          padding:
-                                              EdgeInsets
-                                                  .zero,
-
-                                          icon:
-                                              const Icon(
-                                            Icons
-                                                .more_vert,
-
-                                            size:
-                                                20,
-                                          ),
-
-                                          onSelected:
-                                              (
-                                            value,
-                                          ) async {
-                                            if (value ==
-                                                'delete') {
-                                              await _deleteNote(
-                                                note,
-                                              );
-                                            }
-                                          },
-
-                                          itemBuilder:
-                                              (
-                                            context,
-                                          ) =>
-                                              const [
-                                            PopupMenuItem(
-                                              value:
-                                                  'delete',
-
-                                              child:
-                                                  Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .delete_outline,
-
-                                                    color:
-                                                        Colors.red,
-                                                  ),
-
-                                                  SizedBox(
-                                                    width:
-                                                        8,
-                                                  ),
-
-                                                  Text(
-                                                    'Удалить',
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                    style:
+                                        const TextStyle(
+                                      fontWeight:
+                                          FontWeight.bold,
+                                      fontSize:
+                                          16,
                                     ),
 
-                                    const Spacer(),
+                                    maxLines:
+                                        2,
 
-                                    Container(
-                                      padding:
-                                          const EdgeInsets
-                                              .symmetric(
-                                        horizontal:
-                                            6,
+                                    overflow:
+                                        TextOverflow
+                                            .ellipsis,
+                                  ),
+                                ),
 
-                                        vertical:
-                                            2,
-                                      ),
+                                PopupMenuButton<
+                                    String>(
+                                  padding:
+                                      EdgeInsets
+                                          .zero,
 
-                                      decoration:
-                                          BoxDecoration(
-                                        color:
-                                            Colors.white10,
+                                  icon:
+                                      const Icon(
+                                    Icons
+                                        .more_vert,
+                                    size:
+                                        20,
+                                  ),
 
-                                        borderRadius:
-                                            BorderRadius
-                                                .circular(
-                                          4,
-                                        ),
-                                      ),
+                                  onSelected:
+                                      (
+                                    value,
+                                  ) async {
+                                    if (value ==
+                                        'delete') {
+                                      await _deleteNote(
+                                        note,
+                                      );
+                                    }
+                                  },
+
+                                  itemBuilder:
+                                      (
+                                    context,
+                                  ) =>
+                                      const [
+                                    PopupMenuItem(
+                                      value:
+                                          'delete',
 
                                       child:
+                                          Row(
+                                        children: [
+                                          Icon(
+                                            Icons
+                                                .delete_outline,
+                                            color:
+                                                Colors.red,
+                                          ),
+                                          SizedBox(
+                                            width:
+                                                8,
+                                          ),
                                           Text(
-                                        note.category,
-
-                                        style:
-                                            const TextStyle(
-                                          fontSize:
-                                              10,
-
-                                          color:
-                                              Colors.amber,
-                                        ),
+                                            'Удалить',
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
+                              ],
+                            ),
+
+                            const Spacer(),
+
+                            Container(
+                              padding:
+                                  const EdgeInsets
+                                      .symmetric(
+                                horizontal:
+                                    6,
+
+                                vertical:
+                                    2,
+                              ),
+
+                              decoration:
+                                  BoxDecoration(
+                                color:
+                                    Colors.white10,
+
+                                borderRadius:
+                                    BorderRadius
+                                        .circular(
+                                  4,
+                                ),
+                              ),
+
+                              child:
+                                  Text(
+                                note.category,
+
+                                style:
+                                    const TextStyle(
+                                  fontSize:
+                                      10,
+
+                                  color:
+                                      Colors.amber,
+                                ),
                               ),
                             ),
-                          );
-                        },
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                )
-                .toList(),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ).toList(),
       ),
 
       floatingActionButton:
@@ -1550,7 +1484,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ==========================================================
-  // DISPOSE
+  // DISPOSE HOME
   // ==========================================================
 
   @override
@@ -1561,51 +1495,44 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 // ============================================================
-// EDITOR SCREEN
+// EDITOR
 // ============================================================
 
 class EditorScreen
     extends StatefulWidget {
   final Note? note;
 
-  final List<String>
-      categories;
+  final List<String> categories;
 
-  final String?
-      initialCategory;
+  final String? initialCategory;
 
   const EditorScreen({
     super.key,
-
     this.note,
-
     required this.categories,
-
     this.initialCategory,
   });
 
   @override
-  State<EditorScreen>
-      createState() =>
-          _EditorScreenState();
+  State<EditorScreen> createState() =>
+      _EditorScreenState();
 }
-
-// ============================================================
-// EDITOR STATE
-// ============================================================
 
 class _EditorScreenState
     extends State<EditorScreen> {
+
   final TextEditingController
       _titleController =
       TextEditingController();
 
-  final FocusNode
-      _focusNode =
+  final FocusNode _focusNode =
       FocusNode();
 
-  FleatherController?
-      _controller;
+  final GlobalKey<EditorState>
+      _editorKey =
+      GlobalKey<EditorState>();
+
+  FleatherController? _controller;
 
   late String
       _selectedCategory;
@@ -1620,99 +1547,113 @@ class _EditorScreenState
   void initState() {
     super.initState();
 
-    if (widget.note != null) {
+    _initializeEditor();
+  }
+
+  // ==========================================================
+  // INITIALIZE EDITOR
+  // ==========================================================
+
+  void _initializeEditor() {
+    final note =
+        widget.note;
+
+    if (note != null) {
       _titleController.text =
-          widget.note!.title;
+          note.title;
 
       _selectedCategory =
-          widget.note!.category;
+          note.category;
 
       try {
         final decoded =
             jsonDecode(
-          widget.note!
-              .contentJson,
+          note.contentJson,
         );
 
-        _controller =
-            FleatherController(
-          document:
-              ParchmentDocument
-                  .fromJson(
-            decoded,
-          ),
-        );
+        if (decoded is List) {
+          _controller =
+              FleatherController(
+            document:
+                ParchmentDocument
+                    .fromJson(
+              decoded,
+            ),
+          );
+        } else {
+          _controller =
+              FleatherController();
+        }
       } catch (_) {
         _controller =
             FleatherController();
       }
+
+      return;
+    }
+
+    _controller =
+        FleatherController();
+
+    final available =
+        widget.categories
+            .where(
+              (c) => c != 'Все',
+            )
+            .toList();
+
+    if (widget.initialCategory !=
+            null &&
+        available.contains(
+          widget.initialCategory,
+        )) {
+      _selectedCategory =
+          widget.initialCategory!;
+    } else if (available.contains(
+      'Личное',
+    )) {
+      _selectedCategory =
+          'Личное';
+    } else if (available.isNotEmpty) {
+      _selectedCategory =
+          available.first;
     } else {
-      _controller =
-          FleatherController();
-
-      final availableCategories =
-          widget.categories
-              .where(
-                (cat) =>
-                    cat != 'Все',
-              )
-              .toList();
-
-      if (widget.initialCategory !=
-              null &&
-          availableCategories
-              .contains(
-            widget.initialCategory,
-          )) {
-        _selectedCategory =
-            widget.initialCategory!;
-      } else if (availableCategories
-          .contains('Личное')) {
-        _selectedCategory =
-            'Личное';
-      } else if (availableCategories
-          .isNotEmpty) {
-        _selectedCategory =
-            availableCategories
-                .first;
-      } else {
-        _selectedCategory =
-            'Личное';
-      }
+      _selectedCategory =
+          'Личное';
     }
   }
 
   // ==========================================================
-  // ESCAPE MARKDOWN
+  // SAFE MARKDOWN TEXT
   // ==========================================================
 
-  String _escapeMarkdown(
-    String text,
+  String _escapeMarkdownText(
+    String value,
   ) {
-    return text
+    return value
         .replaceAll(
-          '\\',
-          '\\\\',
-        )
-        .replaceAll(
-          '`',
-          '\\`',
+          r'\',
+          r'\\',
         )
         .replaceAll(
           '*',
-          '\\*',
+          r'\*',
         )
         .replaceAll(
           '_',
-          '\\_',
+          r'\_',
         )
         .replaceAll(
           '[',
-          '\\[',
+          r'\[',
         )
         .replaceAll(
           ']',
-          '\\]',
+          r'\]',
+        )
+        .replaceAll(
+          '`',
+          r'\`',
         );
   }
 
@@ -1720,7 +1661,7 @@ class _EditorScreenState
   // INLINE MARKDOWN
   // ==========================================================
 
-  String _formatMarkdownText(
+  String _formatInlineMarkdown(
     String text,
     Map<String, dynamic>
         attributes,
@@ -1729,19 +1670,27 @@ class _EditorScreenState
       return '';
     }
 
-    var result =
-        _escapeMarkdown(
+    String result =
+        _escapeMarkdownText(
       text,
     );
 
+    // Link делаем первым,
+    // потому что ссылка должна
+    // содержать уже подготовленный текст.
     if (attributes['link'] !=
-        null) {
+            null &&
+        attributes['link']
+            .toString()
+            .isNotEmpty) {
       final url =
           attributes['link']
               .toString();
 
       result =
           '[$result]($url)';
+
+      return result;
     }
 
     if (attributes['code'] ==
@@ -1762,6 +1711,16 @@ class _EditorScreenState
           '*$result*';
     }
 
+    if (attributes['underline'] ==
+        true) {
+      // Markdown не имеет
+      // стандартного underline.
+      // HTML здесь специально
+      // не используем.
+      result =
+          '++$result++';
+    }
+
     if (attributes['strike'] ==
         true) {
       result =
@@ -1776,8 +1735,7 @@ class _EditorScreenState
   // ==========================================================
 
   String _deltaToMarkdown() {
-    if (_controller ==
-        null) {
+    if (_controller == null) {
       return '';
     }
 
@@ -1787,31 +1745,113 @@ class _EditorScreenState
             .toDelta()
             .toJson();
 
-    final StringBuffer
-        markdown =
+    final StringBuffer output =
         StringBuffer();
 
-    final title =
-        _titleController
-            .text
-            .trim();
+    String currentLine = '';
 
-    if (title.isNotEmpty) {
-      markdown.writeln(
-        '# $title',
-      );
+    Map<String, dynamic>
+        currentLineAttributes =
+        <String, dynamic>{};
 
-      markdown.writeln();
+    void writeCurrentLine() {
+      final text =
+          currentLine;
+
+      final attrs =
+          currentLineAttributes;
+
+      final trimmed =
+          text.trim();
+
+      // Пустая строка.
+      if (trimmed.isEmpty) {
+        output.write('\n');
+
+        currentLine = '';
+        currentLineAttributes =
+            <String, dynamic>{};
+
+        return;
+      }
+
+      String line = text;
+
+      // ------------------------------------------------------
+      // Блоковые атрибуты
+      // ------------------------------------------------------
+
+      final header =
+          attrs['heading'] ??
+              attrs['header'];
+
+      if (header == 1) {
+        line = '# $line';
+      } else if (header == 2) {
+        line = '## $line';
+      } else if (header == 3) {
+        line = '### $line';
+      } else if (header == 4) {
+        line = '#### $line';
+      } else if (header == 5) {
+        line = '##### $line';
+      } else if (header == 6) {
+        line = '###### $line';
+      }
+
+      final list =
+          attrs['list'];
+
+      if (list == 'bullet') {
+        line = '- $line';
+      } else if (list == 'ordered') {
+        line = '1. $line';
+      } else if (list == 'checked') {
+        line = '- [x] $line';
+      } else if (list == 'unchecked') {
+        line = '- [ ] $line';
+      }
+
+      if (attrs['blockquote'] ==
+              true ||
+          attrs['block'] ==
+              'quote') {
+        line = '> $line';
+      }
+
+      if (attrs['code-block'] ==
+              true ||
+          attrs['code-block'] !=
+              null ||
+          attrs['block'] ==
+              'code') {
+        line =
+            '    $line';
+      }
+
+      output.write(line);
+      output.write('\n');
+
+      currentLine = '';
+      currentLineAttributes =
+          <String, dynamic>{};
     }
 
-    for (final operation
-        in delta) {
+    // ========================================================
+    // ПРАВИЛЬНЫЙ РАЗБОР DELTA
+    //
+    // В Fleather стили строки
+    // находятся на '\n'.
+    // Inline-стили находятся
+    // на самом тексте.
+    // ========================================================
+
+    for (final operation in delta) {
       if (operation is! Map) {
         continue;
       }
 
-      if (!operation
-          .containsKey(
+      if (!operation.containsKey(
         'insert',
       )) {
         continue;
@@ -1820,89 +1860,57 @@ class _EditorScreenState
       final insert =
           operation['insert'];
 
+      final rawAttributes =
+          operation['attributes'];
+
       final attributes =
-          operation['attributes']
-                  is Map
-              ? Map<String, dynamic>
-                  .from(
-                  operation[
-                      'attributes'] as Map,
+          rawAttributes is Map
+              ? Map<String, dynamic>.from(
+                  rawAttributes,
                 )
               : <String, dynamic>{};
 
-      // --------------------------------------------------------
-      // TEXT
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // Обычный текст
+      // ------------------------------------------------------
 
       if (insert is String) {
-        final lines =
+        final parts =
             insert.split('\n');
 
-        for (
-          int i = 0;
-          i < lines.length;
-          i++
-        ) {
-          var text =
-              _formatMarkdownText(
-            lines[i],
-            attributes,
-          );
+        for (int i = 0;
+            i < parts.length;
+            i++) {
+          final part =
+              parts[i];
 
-          if (attributes[
-                  'header'] ==
-              1) {
-            text =
-                '# $text';
-          } else if (attributes[
-                  'header'] ==
-              2) {
-            text =
-                '## $text';
-          } else if (attributes[
-                  'header'] ==
-              3) {
-            text =
-                '### $text';
-          }
-
-          if (attributes[
-                  'blockquote'] ==
-              true) {
-            text =
-                '> $text';
-          }
-
-          if (attributes[
-                  'list'] ==
-              'bullet') {
-            text =
-                '- $text';
-          } else if (attributes[
-                  'list'] ==
-              'ordered') {
-            text =
-                '1. $text';
-          }
-
-          markdown.write(
-            text,
-          );
-
-          if (i <
-              lines.length - 1) {
-            markdown.write(
-              '\n',
+          if (part.isNotEmpty) {
+            currentLine +=
+                _formatInlineMarkdown(
+              part,
+              attributes,
             );
+          }
+
+          // Каждый \n означает
+          // завершение текущей строки.
+          if (i <
+              parts.length - 1) {
+            currentLineAttributes =
+                Map<String, dynamic>.from(
+              attributes,
+            );
+
+            writeCurrentLine();
           }
         }
 
         continue;
       }
 
-      // --------------------------------------------------------
-      // IMAGE
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // EMBED
+      // ------------------------------------------------------
 
       if (insert is Map) {
         if (insert.containsKey(
@@ -1910,16 +1918,44 @@ class _EditorScreenState
         )) {
           final image =
               insert['image']
-                  .toString();
+                  ?.toString() ??
+                  '';
 
-          markdown.writeln(
-            '![Изображение]($image)',
-          );
+          if (image.isNotEmpty) {
+            currentLine +=
+                '![Изображение]($image)';
+          }
         }
       }
     }
 
-    return markdown.toString();
+    // На всякий случай
+    // записываем последний текст.
+    if (currentLine.isNotEmpty) {
+      writeCurrentLine();
+    }
+
+    String result =
+        output.toString();
+
+    // Убираем чрезмерное количество
+    // пустых строк в самом конце.
+    result =
+        result.trimRight();
+
+    // Заголовок заметки
+    // сохраняем в Markdown отдельно.
+    final title =
+        _titleController.text.trim();
+
+    if (title.isNotEmpty) {
+      result =
+          '# ${_escapeMarkdownText(title)}\n\n$result';
+    }
+
+    // Markdown-файл всегда
+    // заканчивается переводом строки.
+    return '$result\n';
   }
 
   // ==========================================================
@@ -1928,32 +1964,34 @@ class _EditorScreenState
 
   Future<void>
       _saveToMarkdownFile() async {
-    if (_saving) {
+    if (_controller == null) {
       return;
     }
 
-    setState(() {
-      _saving = true;
-    });
-
     try {
+      setState(() {
+        _saving = true;
+      });
+
       final markdown =
           _deltaToMarkdown();
 
-      if (markdown.trim().isEmpty) {
-        throw Exception(
-          'Заметка пустая.',
-        );
-      }
+      // ВАЖНО:
+      // сохраняем UTF-8 непосредственно
+      // через flutter_file_dialog.
+      final Uint8List bytes =
+          Uint8List.fromList(
+        utf8.encode(
+          markdown,
+        ),
+      );
 
-      var fileName =
-          _titleController
-              .text
-              .trim();
+      String fileName =
+          _titleController.text.trim();
 
       if (fileName.isEmpty) {
         fileName =
-            'Заметка';
+            'untitled_note';
       }
 
       fileName =
@@ -1971,52 +2009,16 @@ class _EditorScreenState
             '$fileName.md';
       }
 
-      // ========================================================
-      // TEMP FILE
-      // ========================================================
-
-      final tempDirectory =
-          Directory.systemTemp;
-
-      final tempFile =
-          File(
-        '${tempDirectory.path}/$fileName',
-      );
-
-      await tempFile
-          .writeAsString(
-        markdown,
-        encoding: utf8,
-        flush: true,
-      );
-
-      if (!await tempFile
-          .exists()) {
-        throw Exception(
-          'Не удалось создать временный файл.',
-        );
-      }
-
-      final fileSize =
-          await tempFile
-              .length();
-
-      if (fileSize <= 0) {
-        throw Exception(
-          'Markdown-файл получился пустым.',
-        );
-      }
-
-      // ========================================================
-      // ANDROID SAVE DIALOG
-      // ========================================================
-
       final params =
           SaveFileDialogParams(
-        sourceFilePath:
-            tempFile.path,
-        fileName:
-            fileName,
+        data: bytes,
+        fileName: fileName,
+        mimeTypesFilter: const [
+          'text/markdown',
+          'text/plain',
+          'application/octet-stream',
+        ],
+        localOnly: false,
       );
 
       final savedPath =
@@ -2025,44 +2027,62 @@ class _EditorScreenState
         params: params,
       );
 
-      // ========================================================
-      // CLEAN TEMP
-      // ========================================================
-
-      try {
-        if (await tempFile
-            .exists()) {
-          await tempFile
-              .delete();
-        }
-      } catch (_) {}
-
       if (!mounted) {
         return;
       }
 
-      if (savedPath ==
-          null) {
-        _showMessage(
-          'Сохранение отменено.',
-        );
+      if (savedPath == null) {
+        ScaffoldMessenger.of(
+          context,
+        )
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content:
+                  Text(
+                'Сохранение отменено',
+              ),
+            ),
+          );
 
         return;
       }
 
-      _showMessage(
-        'Markdown сохранён.\n'
-        'Размер: $fileSize байт',
-      );
+      ScaffoldMessenger.of(
+        context,
+      )
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Markdown сохранён:\n$savedPath',
+            ),
+            duration:
+                const Duration(
+              seconds: 4,
+            ),
+          ),
+        );
     } catch (e) {
       if (!mounted) {
         return;
       }
 
-      _showMessage(
-        'Ошибка сохранения:\n$e',
-        error: true,
-      );
+      ScaffoldMessenger.of(
+        context,
+      )
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Ошибка сохранения Markdown:\n$e',
+            ),
+            duration:
+                const Duration(
+              seconds: 5,
+            ),
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() {
@@ -2076,30 +2096,29 @@ class _EditorScreenState
   // SAVE NOTE
   // ==========================================================
 
-  void _saveNote() {
-    if (_controller ==
-        null) {
+  void _saveAndClose() {
+    if (_controller == null) {
       return;
     }
-
-    final title =
-        _titleController
-            .text
-            .trim();
 
     final content =
         jsonEncode(
       _controller!
           .document
+          .toDelta()
           .toJson(),
     );
 
     Navigator.pop(
       context,
       {
-        'title': title,
+        'title':
+            _titleController.text
+                .trim(),
+
         'contentJson':
             content,
+
         'category':
             _selectedCategory,
       },
@@ -2107,37 +2126,12 @@ class _EditorScreenState
   }
 
   // ==========================================================
-  // MESSAGE
+  // ASK BEFORE CLOSE
   // ==========================================================
 
-  void _showMessage(
-    String text, {
-    bool error = false,
-  }) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(
-      context,
-    )
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          backgroundColor:
-              error
-                  ? Colors.red
-                  : null,
-
-          content:
-              Text(text),
-
-          duration:
-              const Duration(
-            seconds: 4,
-          ),
-        ),
-      );
+  Future<bool> _onWillPop() async {
+    _saveAndClose();
+    return false;
   }
 
   // ==========================================================
@@ -2148,8 +2142,7 @@ class _EditorScreenState
   Widget build(
     BuildContext context,
   ) {
-    if (_controller ==
-        null) {
+    if (_controller == null) {
       return const Scaffold(
         body: Center(
           child:
@@ -2161,249 +2154,237 @@ class _EditorScreenState
     final availableCategories =
         widget.categories
             .where(
-              (category) =>
-                  category !=
-                  'Все',
+              (c) => c != 'Все',
             )
             .toList();
 
-    if (!availableCategories
-            .contains(
-          _selectedCategory,
-        ) &&
-        availableCategories
-            .isNotEmpty) {
-      _selectedCategory =
-          availableCategories
-              .first;
+    if (availableCategories
+        .isEmpty) {
+      availableCategories.add(
+        'Личное',
+      );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title:
-            const Text(
-          'Редактор',
+    if (!availableCategories
+        .contains(
+      _selectedCategory,
+    )) {
+      _selectedCategory =
+          availableCategories.first;
+    }
+
+    return WillPopScope(
+      onWillPop:
+          _onWillPop,
+
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Редактор',
+          ),
+
+          actions: [
+            // ----------------------------------------------
+            // MARKDOWN
+            // ----------------------------------------------
+
+            IconButton(
+              tooltip:
+                  'Экспорт в Markdown',
+
+              onPressed:
+                  _saving
+                      ? null
+                      : _saveToMarkdownFile,
+
+              icon:
+                  _saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth:
+                                2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons
+                              .description_outlined,
+                        ),
+            ),
+
+            // ----------------------------------------------
+            // SAVE
+            // ----------------------------------------------
+
+            IconButton(
+              tooltip:
+                  'Сохранить',
+
+              onPressed:
+                  _saveAndClose,
+
+              icon:
+                  const Icon(
+                Icons.save,
+              ),
+            ),
+          ],
         ),
 
-        actions: [
-          // ====================================================
-          // MARKDOWN EXPORT
-          // ====================================================
+        body:
+            SafeArea(
+          child: Column(
+            children: [
+              // ==================================================
+              // TITLE
+              // ==================================================
 
-          IconButton(
-            tooltip:
-                'Экспорт в Markdown',
+              Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(
+                  12,
+                  8,
+                  12,
+                  4,
+                ),
 
-            icon:
-                _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child:
-                            CircularProgressIndicator(
-                          strokeWidth:
-                              2,
-                        ),
-                      )
-                    : const Icon(
-                        Icons
-                            .download,
-                      ),
+                child:
+                    TextField(
+                  controller:
+                      _titleController,
 
-            onPressed:
-                _saving
-                    ? null
-                    : _saveToMarkdownFile,
-          ),
+                  style:
+                      const TextStyle(
+                    fontSize:
+                        20,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
 
-          // ====================================================
-          // SAVE NOTE
-          // ====================================================
-
-          IconButton(
-            tooltip:
-                'Сохранить заметку',
-
-            icon:
-                const Icon(
-              Icons.save,
-            ),
-
-            onPressed:
-                _saveNote,
-          ),
-        ],
-      ),
-
-      body:
-          Column(
-        children: [
-          // ====================================================
-          // TITLE
-          // ====================================================
-
-          Padding(
-            padding:
-                const EdgeInsets
-                    .fromLTRB(
-              12,
-              12,
-              12,
-              4,
-            ),
-
-            child:
-                TextField(
-              controller:
-                  _titleController,
-
-              textInputAction:
-                  TextInputAction
-                      .next,
-
-              style:
-                  const TextStyle(
-                fontSize: 20,
-                fontWeight:
-                    FontWeight.bold,
+                  decoration:
+                      const InputDecoration(
+                    hintText:
+                        'Название заметки',
+                    border:
+                        InputBorder.none,
+                  ),
+                ),
               ),
 
-              decoration:
-                  const InputDecoration(
-                labelText:
-                    'Название',
+              // ==================================================
+              // CATEGORY
+              // ==================================================
 
-                border:
-                    OutlineInputBorder(),
-              ),
-            ),
-          ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal:
+                      12,
+                ),
 
-          // ====================================================
-          // CATEGORY
-          // ====================================================
+                child:
+                    Row(
+                  children: [
+                    const Icon(
+                      Icons
+                          .folder_outlined,
+                      size:
+                          20,
+                    ),
 
-          Padding(
-            padding:
-                const EdgeInsets
-                    .fromLTRB(
-              12,
-              4,
-              12,
-              4,
-            ),
+                    const SizedBox(
+                      width:
+                          8,
+                    ),
 
-            child:
-                DropdownButtonFormField<
-                    String>(
-              value:
-                  availableCategories
-                          .contains(
-                        _selectedCategory,
-                      )
-                      ? _selectedCategory
-                      : null,
+                    const Text(
+                      'Раздел:',
+                    ),
 
-              decoration:
-                  const InputDecoration(
-                labelText:
-                    'Раздел',
+                    const SizedBox(
+                      width:
+                          8,
+                    ),
 
-                border:
-                    OutlineInputBorder(),
-              ),
+                    Expanded(
+                      child:
+                          DropdownButton<String>(
+                        value:
+                            _selectedCategory,
 
-              items:
-                  availableCategories
-                      .map(
-                        (
-                          category,
-                        ) {
-                          return DropdownMenuItem<
-                              String>(
+                        isExpanded:
+                            true,
+
+                        items:
+                            availableCategories
+                                .map(
+                          (
+                            category,
+                          ) =>
+                              DropdownMenuItem<
+                                  String>(
                             value:
                                 category,
-
                             child:
                                 Text(
                               category,
                             ),
-                          );
+                          ),
+                        ).toList(),
+
+                        onChanged:
+                            (value) {
+                          if (value ==
+                              null) {
+                            return;
+                          }
+
+                          setState(() {
+                            _selectedCategory =
+                                value;
+                          });
                         },
-                      )
-                      .toList(),
-
-              onChanged:
-                  (
-                value,
-              ) {
-                if (value ==
-                    null) {
-                  return;
-                }
-
-                setState(() {
-                  _selectedCategory =
-                      value;
-                });
-              },
-            ),
-          ),
-
-          // ====================================================
-          // TOOLBAR
-          // ====================================================
-
-          const SizedBox(
-            height: 4,
-          ),
-
-          Material(
-            elevation: 2,
-
-            child:
-                FleatherToolbar.basic(
-              controller:
-                  _controller!,
-            ),
-          ),
-
-          // ====================================================
-          // EDITOR
-          // ====================================================
-
-          Expanded(
-            child:
-                Container(
-              margin:
-                  const EdgeInsets
-                      .all(
-                8,
-              ),
-
-              decoration:
-                  BoxDecoration(
-                border:
-                    Border.all(
-                  color: Colors
-                      .white24,
-                ),
-
-                borderRadius:
-                    BorderRadius
-                        .circular(
-                  8,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-              child:
-                  Padding(
-                padding:
-                    const EdgeInsets
-                        .all(
-                  8,
-                ),
+              const Divider(
+                height:
+                    1,
+              ),
 
+              // ==================================================
+              // TOOLBAR
+              // ==================================================
+
+              Material(
+                elevation:
+                    1,
+
+                child:
+                    FleatherToolbar.basic(
+                  controller:
+                      _controller!,
+
+                  editorKey:
+                      _editorKey,
+                ),
+              ),
+
+              const Divider(
+                height:
+                    1,
+              ),
+
+              // ==================================================
+              // EDITOR
+              // ==================================================
+
+              Expanded(
                 child:
                     FleatherEditor(
                   controller:
@@ -2412,16 +2393,33 @@ class _EditorScreenState
                   focusNode:
                       _focusNode,
 
+                  editorKey:
+                      _editorKey,
+
                   padding:
-                      const EdgeInsets
-                          .all(
-                    8,
+                      EdgeInsets.only(
+                    left:
+                        16,
+
+                    right:
+                        16,
+
+                    top:
+                        12,
+
+                    bottom:
+                        MediaQuery.of(
+                              context,
+                            )
+                            .padding
+                            .bottom +
+                        24,
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
