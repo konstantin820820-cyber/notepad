@@ -218,20 +218,8 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   // ФУНКЦИЯ КОПИРОВАНИЯ В БУФЕР ОБМЕНА
-  void _copyToClipboard() {
-    final String plainText = _controller!.document.toPlainText();
-    final String fullText = "${_titleController.text}\n\n$plainText";
-    Clipboard.setData(ClipboardData(text: fullText)).then((_) {
-  void _copyToClipboard() {
-    final String plainText = _controller!.document.toPlainText();
-    final String fullText = "${_titleController.text}\n\n$plainText";
-    Clipboard.setData(ClipboardData(text: fullText)).then((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Текст заметки скопирован в буфер обмена!')),
-        );
-      }
-    });
+    void _copyToClipboard() {
+    Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n${_controller!.document.toPlainText()}"));
   }
 
   @override
