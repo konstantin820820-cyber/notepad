@@ -1567,64 +1567,211 @@ class _EditorScreenState extends State<EditorScreen> {
     return jsonEncode(json);
   }
 
-  // ==========================================================
-  // SAVE NOTE INSIDE APP
-  // ==========================================================
-  //
-  // Это главное сохранение.
-  //
-  // Здесь НЕ создаётся Markdown-файл.
-  // Здесь НЕ используется title вместо текста.
-  //
-  // В contentJson записывается весь Delta документа Fleather.
-  //
-  // ==========================================================
+ // ==========================================================
+// SAVE NOTE — DIAGNOSTIC VERSION
+// ==========================================================
 
-  void _saveNote() {
-    if (_saving) {
+void _saveNote() {
+  if (_saving) {
+    return;
+  }
+
+  try {
+    setState(() {
+      _saving = true;
+    });
+
+    // --------------------------------------------------------
+    // 1. Заголовок
+    // --------------------------------------------------------
+
+    final title = _titleController.text.trim();
+
+    // --------------------------------------------------------
+    // 2. Получаем непосредственно текст из Fleather
+    // --------------------------------------------------------
+
+    final plainText =
+        _controller.document.toPlainText();
+
+    // --------------------------------------------------------
+    // 3. Получаем Delta
+    // --------------------------------------------------------
+
+    final delta =
+        _controller.document.toDelta();
+
+    // --------------------------------------------------------
+    // 4. Преобразуем Delta в JSON
+    // --------------------------------------------------------
+
+    final deltaJson =
+        delta.toJson();
+
+    // --------------------------------------------------------
+    // 5. Преобразуем JSON в строку для Note.contentJson
+    // --------------------------------------------------------
+
+    final contentJson =
+        jsonEncode(deltaJson);
+
+    // ========================================================
+    // DIAGNOSTICS
+    // ========================================================
+
+    debugPrint('');
+    debugPrint(
+      '==================================================',
+    );
+    debugPrint(
+      '              SAVE DIAGNOSTICS',
+    );
+    debugPrint(
+      '==================================================',
+    );
+
+    debugPrint(
+      'TITLE:',
+    );
+
+    debugPrint(
+      title,
+    );
+
+    debugPrint(
+      'TITLE LENGTH: ${title.length}',
+    );
+
+    debugPrint('');
+    debugPrint(
+      'PLAIN TEXT:',
+    );
+
+    debugPrint(
+      plainText,
+    );
+
+    debugPrint(
+      'PLAIN TEXT LENGTH: ${plainText.length}',
+    );
+
+    debugPrint('');
+    debugPrint(
+      'DELTA JSON:',
+    );
+
+    debugPrint(
+      deltaJson.toString(),
+    );
+
+    debugPrint('');
+    debugPrint(
+      'CONTENT JSON:',
+    );
+
+    debugPrint(
+      contentJson,
+    );
+
+    debugPrint('');
+    debugPrint(
+      'CONTENT JSON LENGTH: ${contentJson.length}',
+    );
+
+    debugPrint(
+      '==================================================',
+    );
+    debugPrint('');
+
+    // ========================================================
+    // ПРОВЕРКА
+    // ========================================================
+
+    if (plainText.trim().isEmpty &&
+        contentJson.trim().isEmpty) {
+      throw Exception(
+        'Fleather вернул пустой документ.',
+      );
+    }
+
+    // ========================================================
+    // ПЕРЕДАЁМ ВСЁ ОБРАТНО В HomeScreen
+    // ========================================================
+
+    final result = <String, dynamic>{
+      'title': title,
+
+      'contentJson': contentJson,
+
+      'category': _selectedCategory,
+    };
+
+    debugPrint(
+      'RESULT TO HOME:',
+    );
+
+    debugPrint(
+      result.toString(),
+    );
+
+    debugPrint(
+      'RESULT contentJson length: '
+      '${contentJson.length}',
+    );
+
+    debugPrint(
+      '==================================================',
+    );
+
+    // --------------------------------------------------------
+    // Возвращаем результат в HomeScreen
+    // --------------------------------------------------------
+
+    Navigator.pop(
+      context,
+      result,
+    );
+  } catch (e, stackTrace) {
+    debugPrint('');
+    debugPrint(
+      '==================================================',
+    );
+    debugPrint(
+      'SAVE ERROR',
+    );
+    debugPrint(
+      e.toString(),
+    );
+    debugPrint(
+      stackTrace.toString(),
+    );
+    debugPrint(
+      '==================================================',
+    );
+
+    if (!mounted) {
       return;
     }
 
-    try {
-      setState(() {
-        _saving = true;
-      });
-
-      final title = _titleController.text.trim();
-
-      final contentJson = _getDocumentJson();
-
-      final result = <String, dynamic>{
-        'title': title,
-        'contentJson': contentJson,
-        'category': _selectedCategory,
-      };
-
-      Navigator.pop(
-        context,
-        result,
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ошибка сохранения:\n$e',
+          ),
+          duration:
+              const Duration(seconds: 6),
+        ),
       );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
+  } finally {
+    if (mounted) {
       setState(() {
         _saving = false;
       });
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ошибка сохранения заметки:\n$e',
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
     }
   }
+}
 
   // ==========================================================
   // SAFE FILE NAME
