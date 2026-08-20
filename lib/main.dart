@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:reorderableitemsview/reorderableitemsview.dart'; // Для жестов
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -58,7 +62,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Note> _notes = [];
   List<String> _categories = ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
   TabController? _tabController;
+Future<void> _exportToTxtFile(BuildContext context, String title, String plainText) async {
+  // Запрашиваем доступ к памяти смартфона
+  if (Platform.isAndroid) {
+    var status = await Permission.storage.request();
+    if (!status.isGranted) {
+      await Permission.manageExternalStorage.request();
+    }
+  }ц
 
+  try {
+    // Находим стандартную папку "Загрузки" на Android
+    Directory directory = Directory('/storage/emulated/0/Download');
+    if (!await directory.exists()) {
+      directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+    }
+
+    // Убираем из названия файла знаки, которые запрещены в Windows/Android
+    String safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    if (safeTitle.trim().isEmpty) safeTitle = "Заметка_${DateTime.now().millisecondsSinceEpoch}";
+
+    String filePath = '${directory.path}/$safeTitle.txt';
+    File file = File(filePath);
+
+    // Склеиваем заголовок и чистый текст заметки
+    await file.writeAsString("$title\n\n$plainText");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Сохранено в Загрузки: $safeTitle.txt')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ошибка экспорта: $e')),
+    );
+  }
+}
+  
   @override
   void initState() {
     super.initState();
@@ -156,6 +195,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             builder: (context) => AlertDialog(
                               title: const Text('Указать категорию или удалить?'),
                               actions: [
+                               IconButton(
+  icon: const Icon(Icons.download),
+  tooltip: 'Экспорт в .txt',
+  onPressed: () {
+    // Внимание: замените _titleController и _fleatherController на те имена переменных, 
+    // которые используются у вас для заголовка и текстового движка Fleather!
+    _exportToTxtFile(
+      context, 
+      _titleController.text, 
+      _fleatherController.document.toPlainText(), // Берем чистый текст без тегов
+    );
+  },
+),
+
                                 TextButton(
                                   onPressed: () {
                                     setState(() { _notes.removeWhere((n) => n.id == note.id); });
