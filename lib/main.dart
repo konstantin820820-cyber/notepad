@@ -1,276 +1,357 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:fleather/fleather.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:reorderableitemsview/reorderableitemsview.dart'; // Для жестов
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fleather/fleather.dart';
 
-void main() => runApp(const LocalNotesApp());
+void main() {
+  runApp(const MyApp());
+}
 
-class LocalNotesApp extends StatelessWidget {
-  const LocalNotesApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Локальный Блокнот',
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('ru', 'RU')],
-      locale: const Locale('ru', 'RU'),
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber, brightness: Brightness.dark),
+      title: 'Мой Локальный Блокнот',
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.amber,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF1E1E1E)),
+        cardColor: const Color(0xFF1E1E1E),
       ),
-      home: const HomeScreen(),
+      home: const MainScreen(),
     );
   }
 }
 
 class Note {
-  String id;
-  String title;
-  String contentJson;
-  String category;
+  final String id;
+  final String title;
+  final String contentJson;
+  final String category;
 
-  Note({required this.id, required this.title, required this.contentJson, required this.category});
+  Note({
+    required this.id,
+    required this.title,
+    required this.contentJson,
+    required this.category,
+  });
 
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'contentJson': contentJson, 'category': category};
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'contentJson': contentJson,
+      'category': category,
+    };
+  }
 
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
-      id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: map['id'] ?? '',
       title: map['title'] ?? '',
-      contentJson: map['contentJson'] ?? '[{"insert":"\\n"}]',
+      contentJson: map['contentJson'] ?? '',
       category: map['category'] ?? 'Личное',
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _MainScreenState extends State<MainScreen> {
   List<Note> _notes = [];
   List<String> _categories = ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
-  TabController? _tabController;
-Future<void> _exportToTxtFile(BuildContext context, String title, String plainText) async {
-  // Запрашиваем доступ к памяти смартфона
-  if (Platform.isAndroid) {
-    var status = await Permission.storage.request();
-    if (!status.isGranted) {
-      await Permission.manageExternalStorage.request();
-    }
-  }ц
 
-  try {
-    // Находим стандартную папку "Загрузки" на Android
-    Directory directory = Directory('/storage/emulated/0/Download');
-    if (!await directory.exists()) {
-      directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-    }
-
-    // Убираем из названия файла знаки, которые запрещены в Windows/Android
-    String safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-    if (safeTitle.trim().isEmpty) safeTitle = "Заметка_${DateTime.now().millisecondsSinceEpoch}";
-
-    String filePath = '${directory.path}/$safeTitle.txt';
-    File file = File(filePath);
-
-    // Склеиваем заголовок и чистый текст заметки
-    await file.writeAsString("$title\n\n$plainText");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Сохранено в Загрузки: $safeTitle.txt')),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ошибка экспорта: $e')),
-    );
-  }
-}
-  
   @override
   void initState() {
     super.initState();
-    _initTabsAndData();
+    _loadData();
   }
 
-  void _initTabsAndData() async {
-    _tabController = TabController(length: _categories.length, vsync: this);
+  Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _categories = prefs.getStringList('local_categories') ?? ['Все', 'Личное', 'Работа', 'Идеи', 'Покупки'];
-      _tabController = TabController(length: _categories.length, vsync: this);
-      final String? notesString = prefs.getString('local_notes_v5');
-      if (notesString != null) {
-        final List<dynamic> decodedList = jsonDecode(notesString);
-        _notes = decodedList.map((item) => Note.fromMap(item)).toList();
-      }
-    });
+    final notesString = prefs.getString('notes');
+    final catsString = prefs.getString('categories');
+
+    if (notesString != null) {
+      final List<dynamic> decoded = jsonDecode(notesString);
+      setState(() {
+        _notes = decoded.map((item) => Note.fromMap(item)).toList();
+      });
+    }
+    if (catsString != null) {
+      setState(() {
+        _categories = List<String>.from(jsonDecode(catsString));
+      });
+    }
   }
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('local_categories', _categories);
-    final String encodedList = jsonEncode(_notes.map((note) => note.toMap()).toList());
-    await prefs.setString('local_notes_v5', encodedList);
+    final notesString = jsonEncode(_notes.map((n) => n.toMap()).toList());
+    final catsString = jsonEncode(_categories);
+    await prefs.setString('notes', notesString);
+    await prefs.setString('categories', catsString);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_tabController == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Мой Блокнот'),
-        bottom: TabBar(controller: _tabController, isScrollable: true, tabs: _categories.map((cat) => Tab(text: cat)).toList()),
-      ),
-      body: TabBarView(
-        controller: _tabController!,
-        children: _categories.map((category) {
-          final filteredNotes = category == 'Все' ? _notes : _notes.where((n) => n.category == category).toList();
-          
-          if (filteredNotes.isEmpty) {
-            return const Center(child: Text('Здесь пока пусто', style: TextStyle(color: Colors.white54)));
-          }
-
-          // Полноценная двухколоночная сетка с поддержкой перетаскивания плиток жестами
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.1,
-              ),
-              itemCount: filteredNotes.length,
-              itemBuilder: (context, index) {
-                final note = filteredNotes[index];
-                return LongPressDraggable<Note>(
-                  data: note,
-                  feedback: SizedBox(
-                    width: MediaQuery.of(context).size.width / 2.2,
-                    height: 100,
-                    child: Card(elevation: 4, child: Center(child: Text(note.title, style: const TextStyle(fontWeight: FontWeight.bold)))),
-                  ),
-                  childWhenDragging: Container(color: Colors.transparent),
-                  child: DragTarget<Note>(
-                    onAcceptWithDetails: (details) {
-                      final draggedNote = details.data;
-                      setState(() {
-                        final int oldIdx = _notes.indexOf(draggedNote);
-                        final int newIdx = _notes.indexOf(note);
-                        if (oldIdx != -1 && newIdx != -1) {
-                          final item = _notes.removeAt(oldIdx);
-                          _notes.insert(newIdx, item);
+  void _manageCategories() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String newCat = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Управление категориями'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(hintText: 'Новая категория'),
+                      onChanged: (val) => newCat = val,
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (newCat.trim().isNotEmpty && !_categories.contains(newCat.trim())) {
+                          setState(() { _categories.add(newCat.trim()); });
+                          setDialogState(() {});
+                          _saveData();
                         }
-                      });
-                      _saveData();
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return GestureDetector(
-                        onTap: () async {
-                          final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)));
-                          if (result != null) {
-                            setState(() {
-                              int idx = _notes.indexWhere((n) => n.id == note.id);
-                              if (idx != -1) _notes[idx] = Note(id: note.id, title: result['title'], contentJson: result['contentJson'], category: result['category']);
-                            });
-                            _saveData();
-                          }
-                        },
-                        onLongPress: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Указать категорию или удалить?'),
-                              actions: [
-                               IconButton(
-  icon: const Icon(Icons.download),
-  tooltip: 'Экспорт в .txt',
-  onPressed: () {
-    // Внимание: замените _titleController и _fleatherController на те имена переменных, 
-    // которые используются у вас для заголовка и текстового движка Fleather!
-    _exportToTxtFile(
-      context, 
-      _titleController.text, 
-      _fleatherController.document.toPlainText(), // Берем чистый текст без тегов
-    );
-  },
-),
-
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() { _notes.removeWhere((n) => n.id == note.id); });
-                                    _saveData();
-                                    Navigator.pop(context);
-                                  },
-                                  child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-                                ),
-                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-                              ],
+                      },
+                      child: const Text('Добавить'),
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          if (cat == 'Все' || cat == 'Личное') return Container();
+                          return ListTile(
+                            title: Text(cat),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  _categories.remove(cat);
+                                  _notes = _notes.map((n) => n.category == cat ? Note(id: n.id, title: n.title, contentJson: n.contentJson, category: 'Личное') : n).toList();
+                                });
+                                setDialogState(() {});
+                                _saveData();
+                              },
                             ),
                           );
                         },
-                        child: Card(
-                          elevation: 2,
-                          color: candidateData.isNotEmpty ? Colors.amber.withOpacity(0.2) : null,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(note.title.isEmpty ? 'Без названия' : note.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
-                                  child: Text(note.category, style: const TextStyle(fontSize: 10, color: Colors.amber)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          );
-        }).toList(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)));
-          if (result != null) {
-            setState(() {
-              _notes.add(Note(id: DateTime.now().millisecondsSinceEpoch.toString(), title: result['title'], contentJson: result['contentJson'], category: result['category']));
-            });
-            _saveData();
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Закрыть')),
+              ],
+            );
+          },
+        );
+      },
     );
   }
-}
+    @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: _categories.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Мой Блокнот'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _manageCategories,
+            ),
+          ],
+          bottom: TabBar(
+            isScrollable: true,
+            tabs: _categories.map((cat) => Tab(text: cat)).toList(),
+          ),
+        ),
+        body: TabBarView(
+          children: _categories.map((category) {
+            final filteredNotes = category == 'Все' 
+                ? _notes 
+                : _notes.where((n) => n.category == category).toList();
 
-class EditorScreen extends StatefulWidget {
+            if (filteredNotes.isEmpty) {
+              return const Center(child: Text('Нет заметок'));
+            }
+
+            return Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 8.0,
+                  crossAxisSpacing: 8.0,
+                  childAspectRatio: 1.1,
+                ),
+                itemCount: filteredNotes.length,
+                itemBuilder: (context, index) {
+                  final note = filteredNotes[index];
+                  return LongPressDraggable<Note>(
+                    data: note,
+                    axis: null,
+                    feedback: SizedBox(
+                      width: MediaQuery.of(context).size.width / 2.3,
+                      height: 110,
+                      child: Card(
+                        elevation: 6,
+                        color: Colors.amber.withOpacity(0.9),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            note.title.isEmpty ? 'Без названия' : note.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(
+                      opacity: 0.2,
+                      child: Card(child: Container()),
+                    ),
+                    child: DragTarget<Note>(
+                      onWillAcceptWithDetails: (details) => details.data.id != note.id,
+                      onAcceptWithDetails: (details) {
+                        final draggedNote = details.data;
+                        setState(() {
+                          final int oldIdx = _notes.indexWhere((n) => n.id == draggedNote.id);
+                          final int newIdx = _notes.indexWhere((n) => n.id == note.id);
+                          if (oldIdx != -1 && newIdx != -1) {
+                            final item = _notes.removeAt(oldIdx);
+                            _notes.insert(newIdx, item);
+                          }
+                        });
+                        _saveData();
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return GestureDetector(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => EditorScreen(note: note, categories: _categories)),
+                            );
+                            if (result != null) {
+                              setState(() {
+                                int idx = _notes.indexWhere((n) => n.id == note.id);
+                                if (idx != -1) {
+                                  _notes[idx] = Note(
+                                    id: note.id,
+                                    title: result['title'],
+                                    contentJson: result['contentJson'],
+                                    category: result['category'],
+                                  );
+                                }
+                              });
+                              _saveData();
+                            }
+                          },
+                          onLongPress: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Удалить заметку?'),
+                                content: const Text('Это действие нельзя отменить.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() { _notes.removeWhere((n) => n.id == note.id); });
+                                      _saveData();
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Отмена'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Card(
+                            elevation: 2,
+                            color: candidateData.isNotEmpty ? Colors.amber.withOpacity(0.3) : null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    note.title.isEmpty ? 'Без названия' : note.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                                    child: Text(note.category, style: const TextStyle(fontSize: 10, color: Colors.amber)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            );
+          }).toList(),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => EditorScreen(categories: _categories)),
+            );
+            if (result != null) {
+              setState(() {
+                _notes.add(Note(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  title: result['title'],
+                  contentJson: result['contentJson'],
+                  category: result['category'],
+                ));
+              });
+              _saveData();
+            }
+          },
+          child: const Icon(Icons.add),
+        ),
+      ),
+    );
+    class EditorScreen extends StatefulWidget {
   final Note? note;
   final List<String> categories;
   const EditorScreen({super.key, this.note, required this.categories});
+
   @override
   State<EditorScreen> createState() => _EditorScreenState();
 }
@@ -302,12 +383,55 @@ class _EditorScreenState extends State<EditorScreen> {
     super.dispose();
   }
 
+  Future<void> _exportToTxtFile(BuildContext context, String title, String plainText) async {
+    if (Platform.isAndroid) {
+      var status = await Permission.storage.request();
+      if (!status.isGranted) {
+        await Permission.manageExternalStorage.request();
+      }
+    }
+
+    try {
+      Directory directory = Directory('/storage/emulated/0/Download');
+      if (!await directory.exists()) {
+        directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      }
+
+      String safeTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      if (safeTitle.trim().isEmpty) safeTitle = "Заметка_${DateTime.now().millisecondsSinceEpoch}";
+
+      String filePath = '${directory.path}/$safeTitle.txt';
+      File file = File(filePath);
+
+      await file.writeAsString("$title\n\n$plainText");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Сохранено в Загрузки: $safeTitle.txt')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка экспорта: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Заметка'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Экспорт в .txt',
+            onPressed: () {
+              _exportToTxtFile(
+                context,
+                _titleController.text,
+                _controller!.document.toPlainText(),
+              );
+            },
+          ),
           DropdownButton<String>(
             value: _selectedCategory,
             items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
@@ -337,12 +461,6 @@ class _EditorScreenState extends State<EditorScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
             ),
-          ),
-          // Обертка в Material решает проблему пустых перечеркнутых квадратов на Android
-          Material(
-            elevation: 4,
-            color: Theme.of(context).cardColor,
-            child: FleatherToolbar.basic(controller: _controller!),
           ),
         ],
       ),
