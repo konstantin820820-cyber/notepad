@@ -197,37 +197,45 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-    Future<void> _saveToTextFile() async {
+  void _saveToHtmlFile() async {
     try {
-      final String plainText = _controller!.document.toPlainText();
-      final String fileName = _titleController.text.trim().isEmpty 
-          ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" 
-          : _titleController.text.trim();
-          
-      Directory directory = Directory('/storage/emulated/0/Download');
-      if (await directory.exists()) {
-        final file = File('${directory.path}/$fileName.txt');
-        await file.writeAsString("${_titleController.text}\n\n$plainText");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Файл сохранен в Загрузки: $fileName.txt')));
-        }
-      } else {
-        final fallbackDir = Directory('/sdcard/Download');
-        final file = File('${fallbackDir.path}/$fileName.txt');
-        await file.writeAsString("${_titleController.text}\n\n$plainText");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Файл сохранен в Загрузки: $fileName.txt')));
-        }
+      final converter = const FleatherHtmlCodec();
+      final String htmlContent = converter.encode(_controller!.document.toDelta());
+      final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
+      final directory = Directory('/storage/emulated/0/Download');
+      final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
+      final file = File('${targetDir.path}/$fileName.html');
+      await file.writeAsString("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${_titleController.text}</title>
+          <style>body { font-family: sans-serif; padding: 20px; background: #121212; color: #fff; }</style>
+        </head>
+        <body>
+          <h2>${_titleController.text}</h2>
+          $htmlContent
+        </body>
+        </html>
+      """);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Красивый HTML сохранен в Загрузки: $fileName.html')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка при сохранении файла: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ошибка при сохранении файла.')));
       }
     }
   }
 
   void _copyToClipboard() {
-    // Логика копирования в буфер обмена
+    final String plainText = _controller!.document.toPlainText();
+    Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n$plainText")).then((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Текст заметки скопирован в буфер обмена!')));
+      }
+    });
   }
 
   @override
@@ -243,16 +251,8 @@ class _EditorScreenState extends State<EditorScreen> {
       appBar: AppBar(
         title: const Text('Заметка'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.copy),
-            onPressed: _copyToClipboard,
-            tooltip: 'Копировать в буфер',
-          ),
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            onPressed: _saveToTextFile,
-            tooltip: 'Скачать как .txt',
-          ),
+          IconButton(icon: const Icon(Icons.copy), onPressed: _copyToClipboard, tooltip: 'Копировать в буфер'),
+          IconButton(icon: const Icon(Icons.save_alt), onPressed: _saveToHtmlFile, tooltip: 'Скачать как .html'),
           DropdownButton<String>(
             value: _selectedCategory,
             items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
@@ -261,36 +261,16 @@ class _EditorScreenState extends State<EditorScreen> {
           IconButton(
             icon: const Icon(Icons.check),
             onPressed: () {
-              final jsonText = jsonEncode(_controller!.document.toJson());
-              Navigator.pop(context, {
-                'title': _titleController.text,
-                'contentJson': jsonText,
-                'category': _selectedCategory
-              });
+              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonEncode(_controller!.document.toJson()), 'category': _selectedCategory});
             },
           )
         ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
-            ),
-          ),
-          Material(
-            elevation: 4,
-            child: FleatherToolbar.basic(controller: _controller!),
-          ),
+          Padding(padding: const EdgeInsets.all(16.0), child: TextField(controller: _titleController, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none))),
+          Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: FleatherEditor(controller: _controller!, focusNode: _focusNode))),
+          Material(elevation: 4, child: FleatherToolbar.basic(controller: _controller!))
         ],
       ),
     );
