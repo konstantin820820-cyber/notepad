@@ -197,18 +197,14 @@ class _EditorScreenState extends State<EditorScreen> {
       _selectedCategory = widget.categories.contains('Личное') ? 'Личное' : widget.categories.first;
     }
   }
-
-  void _saveToHtmlFile() async {
-      Future<void> _saveToHtmlFile() async {
+  Future<void> _saveToHtmlFile() async {
     try {
-      // Используем корректный кодек из пакета fleather
-      final String htmlContent = const FleatherCodec().encodeHtml(_controller!.document.toDelta());
+      // Убран const, вызываем корректный метод конвертации во встроенный кодек
+      final String htmlContent = FleatherCodec().encodeHtml(_controller!.document.toDelta());
       
-      // Находим системную директорию (например, Downloads или Documents)
       final Directory? targetDir = await getExternalStorageDirectory(); 
       if (targetDir == null) return;
 
-      // Берем имя из контроллера заголовка
       final String fileName = _titleController.text.isNotEmpty 
           ? _titleController.text 
           : 'untitled_note';
@@ -228,16 +224,13 @@ class _EditorScreenState extends State<EditorScreen> {
         );
       }
     }
-  } // Проверьте, чтобы здесь стояла ровно одна закрывающая скобка метода!
-
-  void _copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: "${_titleController.text}\n\n${_controller!.document.toPlainText()}"));
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
     _controller?.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -245,30 +238,57 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Заметка'),
+        title: const Text('Редактор'),
         actions: [
-          IconButton(icon: const Icon(Icons.copy), onPressed: _copyToClipboard, tooltip: 'Копировать в буфер'),
-          IconButton(icon: const Icon(Icons.save_alt), onPressed: _saveToHtmlFile, tooltip: 'Скачать как .html'),
+          IconButton(
+            icon: const Icon(Icons.save_alt), 
+            onPressed: _saveToHtmlFile, 
+            tooltip: 'Скачать как .html',
+          ),
           DropdownButton<String>(
             value: _selectedCategory,
-            items: widget.categories.where((cat) => cat != 'Все').map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-            onChanged: (val) { if (val != null) setState(() => _selectedCategory = val); },
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () {
-              Navigator.pop(context, {'title': _titleController.text, 'contentJson': jsonEncode(_controller!.document.toJson()), 'category': _selectedCategory});
+            items: widget.categories
+                .where((cat) => cat != 'Все')
+                .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                .toList(),
+            onChanged: (val) { 
+              if (val != null) setState(() => _selectedCategory = val); 
             },
-          )
+          ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(padding: const EdgeInsets.all(16.0), child: TextField(controller: _titleController, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none))),
-          Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0), child: FleatherEditor(controller: _controller!, focusNode: _focusNode))),
-          Material(elevation: 4, child: FleatherToolbar.basic(controller: _controller!))
-        ],
+      body: WillPopScope(
+        onWillPop: () async {
+          Navigator.pop(context, {
+            'title': _titleController.text, 
+            'contentJson': jsonEncode(_controller!.document.toJson()), 
+            'category': _selectedCategory
+          });
+          return false;
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0), 
+              child: TextField(
+                controller: _titleController, 
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), 
+                decoration: const InputDecoration(hintText: 'Заголовок', border: InputBorder.none),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0), 
+                child: FleatherEditor(controller: _controller!, focusNode: _focusNode),
+              ),
+            ),
+            Material(
+              elevation: 4, 
+              child: FleatherToolbar.basic(controller: _controller!),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
+} // Эта скобка закрывает класс _EditorScreenState
