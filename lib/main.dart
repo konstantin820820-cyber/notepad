@@ -199,7 +199,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _saveToHtmlFile() async {
     try {
-      final String htmlContent = FleatherCodec.html.encode(_controller!.document.toDelta());
+      final String htmlContent = fleatherCodec.html.encode(_controller!.document.toDelta());
       final String fileName = _titleController.text.trim().isEmpty ? "Заметка_${DateTime.now().millisecondsSinceEpoch}" : _titleController.text.trim();
       final directory = Directory('/storage/emulated/0/Download');
       final targetDir = await directory.exists() ? directory : Directory('/sdcard/Download');
