@@ -1619,7 +1619,7 @@ class _EditorScreenState extends State<EditorScreen> {
   // SAVE NOTE
   // ==========================================================
 
-void _saveNote() {
+Future<void> _saveNote() async {
   if (_controller == null) {
     showDialog(
       context: context,
