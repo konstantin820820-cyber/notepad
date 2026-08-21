@@ -226,74 +226,129 @@ class _HomeScreenState extends State<HomeScreen>
   // SAVE DATA
   // ==========================================================
 
-  Future<void> _saveData() async {
-  final prefs =
-      await SharedPreferences.getInstance();
+ Future<void> _saveData() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
 
-  final notesMap = _notes
-      .map(
-        (note) => note.toMap(),
-      )
-      .toList();
+    // ========================================================
+    // ДИАГНОСТИКА СБЕРЕЖЕНИЯ
+    // ========================================================
 
-  final jsonToSave =
-      jsonEncode(notesMap);
+    debugPrint('');
+    debugPrint('========================================');
+    debugPrint('       SAVE DATA DIAGNOSTIC');
+    debugPrint('========================================');
 
-  debugPrint(
-    '========================================',
-  );
-  debugPrint(
-    'SHARED PREFERENCES SAVE',
-  );
-  debugPrint(
-    'NOTES COUNT: ${_notes.length}',
-  );
-  debugPrint(
-    'JSON LENGTH: ${jsonToSave.length}',
-  );
-  debugPrint(
-    'JSON TO SAVE:',
-  );
-  debugPrint(jsonToSave);
-  debugPrint(
-    '========================================',
-  );
+    debugPrint(
+      'CATEGORIES: ${_categories.toString()}',
+    );
 
-  await prefs.setString(
-    'local_notes_v5',
-    jsonToSave,
-  );
+    debugPrint(
+      'NOTES COUNT: ${_notes.length}',
+    );
 
-  // Проверяем, что SharedPreferences
-  // действительно принял сохранённое значение.
-  final check =
-      prefs.getString('local_notes_v5');
+    for (int i = 0; i < _notes.length; i++) {
+      final note = _notes[i];
 
-  debugPrint(
-    '========== AFTER SAVE CHECK ==========',
-  );
+      debugPrint('');
+      debugPrint('NOTE #$i');
+      debugPrint('ID: ${note.id}');
+      debugPrint('TITLE: ${note.title}');
+      debugPrint('CATEGORY: ${note.category}');
+      debugPrint(
+        'CONTENT LENGTH: ${note.contentJson.length}',
+      );
+      debugPrint(
+        'CONTENT JSON: ${note.contentJson}',
+      );
+    }
 
-  debugPrint(
-    'SAVED JSON LENGTH: '
-    '${check?.length ?? 0}',
-  );
+    // ========================================================
+    // ФОРМИРУЕМ ИМЕННО ТОТ JSON, КОТОРЫЙ УХОДИТ В ПАМЯТЬ
+    // ========================================================
 
-  debugPrint(
-    'SAVED JSON:',
-  );
+    final jsonToSave = jsonEncode(
+      _notes
+          .map(
+            (note) => note.toMap(),
+          )
+          .toList(),
+    );
 
-  debugPrint(
-    check ?? 'NULL',
-  );
+    debugPrint('');
+    debugPrint('----------------------------------------');
+    debugPrint('FINAL JSON TO SHAREDPREFERENCES');
+    debugPrint('LENGTH: ${jsonToSave.length}');
+    debugPrint('JSON:');
+    debugPrint(jsonToSave);
+    debugPrint('----------------------------------------');
 
-  debugPrint(
-    '========================================',
-  );
+    // ========================================================
+    // СОХРАНЕНИЕ
+    // ========================================================
 
-  await prefs.setStringList(
-    'local_categories',
-    _categories,
-  );
+    final success = await prefs.setString(
+      'local_notes_v5',
+      jsonToSave,
+    );
+
+    debugPrint(
+      'SharedPreferences.setString RESULT: $success',
+    );
+
+    // ========================================================
+    // СРАЗУ ЧИТАЕМ ОБРАТНО И ПРОВЕРЯЕМ
+    // ========================================================
+
+    final check = prefs.getString(
+      'local_notes_v5',
+    );
+
+    debugPrint('');
+    debugPrint('----------------------------------------');
+    debugPrint('READ BACK FROM SHAREDPREFERENCES');
+    debugPrint(
+      'READ LENGTH: ${check?.length ?? 0}',
+    );
+    debugPrint('READ JSON:');
+    debugPrint(check ?? 'NULL');
+    debugPrint('----------------------------------------');
+
+    // ========================================================
+    // ПРОВЕРЯЕМ, ЕСТЬ ЛИ В ПРОЧИТАННОМ JSON НАШ ТЕКСТ
+    // ========================================================
+
+    if (check != null) {
+      debugPrint(
+        'CONTAINS "Первая строка": '
+        '${check.contains('Первая строка')}',
+      );
+
+      debugPrint(
+        'CONTAINS "Это вторая строка": '
+        '${check.contains('Это вторая строка')}',
+      );
+
+      debugPrint(
+        'CONTAINS "Третья строчка": '
+        '${check.contains('Третья строчка')}',
+      );
+    }
+
+    debugPrint('========================================');
+    debugPrint('          END SAVE DIAGNOSTIC');
+    debugPrint('========================================');
+    debugPrint('');
+
+  } catch (e, stack) {
+    debugPrint('');
+    debugPrint('========================================');
+    debugPrint('SAVE DATA ERROR');
+    debugPrint('ERROR: $e');
+    debugPrint('STACK:');
+    debugPrint('$stack');
+    debugPrint('========================================');
+  }
 }
 
   // ==========================================================
