@@ -1995,11 +1995,41 @@ class _EditorScreenState
   }
 
   // ==========================================================
+  // CREATE HEURISTICS
+  // ==========================================================
+
+  ParchmentHeuristics _createHeuristics() {
+    final fallback =
+        ParchmentHeuristics.fallback;
+
+    final insertRules =
+        fallback.insertRules
+            .where(
+              (rule) =>
+                  rule
+                      is! PreserveLineStyleOnSplitRule,
+            )
+            .toList();
+
+    return ParchmentHeuristics(
+      formatRules:
+          fallback.formatRules,
+      insertRules:
+          insertRules,
+      deleteRules:
+          fallback.deleteRules,
+    );
+  }
+
+  // ==========================================================
   // CREATE CONTROLLER
   // ==========================================================
 
   FleatherController
       _createController() {
+    final heuristics =
+        _createHeuristics();
+
     if (widget.note != null &&
         widget.note!.contentJson
             .trim()
@@ -2019,16 +2049,28 @@ class _EditorScreenState
           final document =
               ParchmentDocument.fromJson(
             cleaned,
+            heuristics:
+                heuristics,
           );
 
           return FleatherController(
-            document: document,
+            document:
+                document,
           );
         }
       } catch (_) {}
     }
 
-    return FleatherController();
+    final document =
+        ParchmentDocument(
+      heuristics:
+          heuristics,
+    );
+
+    return FleatherController(
+      document:
+          document,
+    );
   }
 
   // ==========================================================
