@@ -962,55 +962,131 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ==========================================================
-  // EDIT NOTE
-  // ==========================================================
+// EDIT NOTE
+// ==========================================================
 
-  Future<void> _editNote(
-    Note note,
-  ) async {
-    final result =
-        await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            EditorScreen(
-          note: note,
-          categories:
-              _categories,
-          initialCategory:
-              note.category,
-        ),
+Future<void> _editNote(
+  Note note,
+) async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditorScreen(
+        note: note,
+        categories: _categories,
+        initialCategory: note.category,
       ),
+    ),
+  );
+
+  if (result == null) {
+    return;
+  }
+
+  // ========================================================
+  // ДИАГНОСТИКА:
+  // Проверяем, что реально вернул EditorScreen
+  // ========================================================
+
+  final returnedContent =
+      result['contentJson']?.toString() ?? '';
+
+  final returnedTitle =
+      result['title']?.toString() ?? '';
+
+  final returnedCategory =
+      result['category']?.toString() ?? '';
+
+  await showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text(
+          'ДИАГНОСТИКА HOME',
+        ),
+
+        content: SizedBox(
+          width: double.maxFinite,
+          height:
+              MediaQuery.of(context).size.height * 0.65,
+
+          child: SingleChildScrollView(
+            child: SelectableText(
+              '========== RESULT ==========\n\n'
+
+              'TITLE:\n'
+              '$returnedTitle\n\n'
+
+              'CATEGORY:\n'
+              '$returnedCategory\n\n'
+
+              'CONTENT JSON LENGTH:\n'
+              '${returnedContent.length}\n\n'
+
+              'CONTENT JSON:\n'
+              '$returnedContent\n\n'
+
+              'FULL RESULT:\n'
+              '${result.toString()}\n\n'
+
+              '============================',
+              style: const TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ),
+
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(
+                dialogContext,
+              );
+            },
+            child: const Text(
+              'Продолжить',
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  // ========================================================
+  // ОБЫЧНОЕ СОХРАНЕНИЕ
+  // ========================================================
+
+  setState(() {
+    final index = _notes.indexWhere(
+      (n) => n.id == note.id,
     );
 
-    if (result == null) {
-      return;
-    }
+    if (index != -1) {
+      _notes[index] = Note(
+        id: note.id,
 
-    setState(() {
-      final index =
-          _notes.indexWhere(
-        (n) => n.id == note.id,
+        title:
+            result['title'] ?? '',
+
+        contentJson:
+            result['contentJson'] ??
+                '[{"insert":"\\n"}]',
+
+        category:
+            result['category'] ??
+                note.category,
       );
+    }
+  });
 
-      if (index != -1) {
-        _notes[index] = Note(
-          id: note.id,
-          title:
-              result['title'] ??
-                  '',
-          contentJson:
-              result['contentJson'] ??
-                  '[{"insert":"\\n"}]',
-          category:
-              result['category'] ??
-                  note.category,
-        );
-      }
-    });
+  // ========================================================
+  // СОХРАНЕНИЕ В SHARED PREFERENCES
+  // ========================================================
 
-    await _saveData();
-  }
+  await _saveData();
+}ы
 
   // ==========================================================
   // ADD NOTE
