@@ -147,15 +147,19 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final savedCategories = prefs.getStringList(_categoriesKey);
+    final savedCategories =
+        prefs.getStringList(_categoriesKey);
 
-    final notesString = prefs.getString(_notesKey);
+    final notesString =
+        prefs.getString(_notesKey);
 
-    final trashString = prefs.getString(_trashKey);
+    final trashString =
+        prefs.getString(_trashKey);
 
     List<String> categories;
 
-    if (savedCategories == null || savedCategories.isEmpty) {
+    if (savedCategories == null ||
+        savedCategories.isEmpty) {
       categories = [
         'Все',
         'Личное',
@@ -176,7 +180,8 @@ class _HomeScreenState extends State<HomeScreen>
     List<Note> notes = [];
     List<Note> trash = [];
 
-    if (notesString != null && notesString.isNotEmpty) {
+    if (notesString != null &&
+        notesString.isNotEmpty) {
       try {
         final decoded = jsonDecode(notesString);
 
@@ -195,7 +200,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
-    if (trashString != null && trashString.isNotEmpty) {
+    if (trashString != null &&
+        trashString.isNotEmpty) {
       try {
         final decoded = jsonDecode(trashString);
 
@@ -215,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final fallbackCategory =
-        categories.length > 1 ? categories[1] : 'Личное';
+        categories.length > 1
+            ? categories[1]
+            : 'Личное';
 
     for (final note in notes) {
       if (!categories.contains(note.category)) {
@@ -261,7 +269,8 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
     );
 
-    final safeIndex = index.clamp(0, length - 1);
+    final safeIndex =
+        index.clamp(0, length - 1);
 
     _tabController!.index = safeIndex;
 
@@ -288,7 +297,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     await prefs.setStringList(
       _categoriesKey,
@@ -298,14 +308,18 @@ class _HomeScreenState extends State<HomeScreen>
     await prefs.setString(
       _notesKey,
       jsonEncode(
-        _notes.map((note) => note.toMap()).toList(),
+        _notes
+            .map((note) => note.toMap())
+            .toList(),
       ),
     );
 
     await prefs.setString(
       _trashKey,
       jsonEncode(
-        _trash.map((note) => note.toMap()).toList(),
+        _trash
+            .map((note) => note.toMap())
+            .toList(),
       ),
     );
   }
@@ -315,32 +329,44 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _addCategory() async {
-    final controller = TextEditingController();
+    final controller =
+        TextEditingController();
 
-    final name = await showDialog<String>(
+    final name =
+        await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Новый раздел'),
+          title: const Text(
+            'Новый раздел',
+          ),
+
           content: TextField(
             controller: controller,
             autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            textCapitalization:
+                TextCapitalization.sentences,
+            decoration:
+                const InputDecoration(
               labelText: 'Название',
               hintText: 'Например: Статьи',
             ),
           ),
+
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text('Отмена'),
+              child: const Text(
+                'Отмена',
+              ),
             ),
+
             FilledButton(
               onPressed: () {
-                final value = controller.text.trim();
+                final value =
+                    controller.text.trim();
 
                 if (value.isNotEmpty) {
                   Navigator.pop(
@@ -349,7 +375,9 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }
               },
-              child: const Text('Добавить'),
+              child: const Text(
+                'Добавить',
+              ),
             ),
           ],
         );
@@ -358,7 +386,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     controller.dispose();
 
-    if (name == null || name.trim().isEmpty) {
+    if (name == null ||
+        name.trim().isEmpty) {
       return;
     }
 
@@ -371,7 +400,8 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final newIndex = _categories.length;
+    final newIndex =
+        _categories.length;
 
     setState(() {
       _categories.add(newName);
@@ -399,32 +429,41 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final controller = TextEditingController(
+    final controller =
+        TextEditingController(
       text: category,
     );
 
-    final newName = await showDialog<String>(
+    final newName =
+        await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text(
             'Переименовать раздел',
           ),
+
           content: TextField(
             controller: controller,
             autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
+            textCapitalization:
+                TextCapitalization.sentences,
           ),
+
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: const Text('Отмена'),
+              child: const Text(
+                'Отмена',
+              ),
             ),
+
             FilledButton(
               onPressed: () {
-                final value = controller.text.trim();
+                final value =
+                    controller.text.trim();
 
                 if (value.isNotEmpty) {
                   Navigator.pop(
@@ -433,7 +472,9 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }
               },
-              child: const Text('Сохранить'),
+              child: const Text(
+                'Сохранить',
+              ),
             ),
           ],
         );
@@ -448,7 +489,8 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final trimmed = newName.trim();
+    final trimmed =
+        newName.trim();
 
     if (_categories.contains(trimmed)) {
       _showMessage(
@@ -458,7 +500,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     setState(() {
-      final index = _categories.indexOf(category);
+      final index =
+          _categories.indexOf(category);
 
       if (index != -1) {
         _categories[index] = trimmed;
@@ -477,10 +520,14 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
 
-    final selectedIndex = _categories.indexOf(trimmed);
+    final selectedIndex =
+        _categories.indexOf(trimmed);
 
     _recreateTabController(
-      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      selectedIndex:
+          selectedIndex < 0
+              ? 0
+              : selectedIndex,
     );
 
     await _saveData();
@@ -501,19 +548,22 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final notesCount = _notes
-        .where(
-          (n) => n.category == category,
-        )
-        .length;
+    final notesCount =
+        _notes
+            .where(
+              (n) => n.category == category,
+            )
+            .length;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text(
             'Удалить раздел?',
           ),
+
           content: Text(
             notesCount == 0
                 ? 'Раздел «$category» пуст.'
@@ -522,6 +572,7 @@ class _HomeScreenState extends State<HomeScreen>
                     'Заметки будут перенесены '
                     'в первый доступный раздел.',
           ),
+
           actions: [
             TextButton(
               onPressed: () {
@@ -530,11 +581,16 @@ class _HomeScreenState extends State<HomeScreen>
                   false,
                 );
               },
-              child: const Text('Отмена'),
+              child: const Text(
+                'Отмена',
+              ),
             ),
+
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
                 Navigator.pop(
@@ -542,7 +598,9 @@ class _HomeScreenState extends State<HomeScreen>
                   true,
                 );
               },
-              child: const Text('Удалить'),
+              child: const Text(
+                'Удалить',
+              ),
             ),
           ],
         );
@@ -553,34 +611,40 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    String targetCategory = 'Личное';
+    String targetCategory =
+        'Личное';
 
     for (final c in _categories) {
-      if (c != 'Все' && c != category) {
+      if (c != 'Все' &&
+          c != category) {
         targetCategory = c;
         break;
       }
     }
 
-    final currentIndex = _tabController?.index ?? 0;
+    final currentIndex =
+        _tabController?.index ?? 0;
 
     setState(() {
       _categories.remove(category);
 
       for (final note in _notes) {
         if (note.category == category) {
-          note.category = targetCategory;
+          note.category =
+              targetCategory;
         }
       }
 
       for (final note in _trash) {
         if (note.category == category) {
-          note.category = targetCategory;
+          note.category =
+              targetCategory;
         }
       }
     });
 
-    final safeIndex = currentIndex.clamp(
+    final safeIndex =
+        currentIndex.clamp(
       0,
       _categories.length - 1,
     );
@@ -606,53 +670,87 @@ class _HomeScreenState extends State<HomeScreen>
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, modalSetState) {
+          builder:
+              (context, modalSetState) {
             return SafeArea(
               child: SizedBox(
                 height:
-                    MediaQuery.of(context).size.height * 0.75,
+                    MediaQuery.of(context)
+                            .size
+                            .height *
+                        0.75,
+
                 child: Column(
                   children: [
                     const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding:
+                          EdgeInsets.all(16),
                       child: Text(
                         'Разделы',
-                        style: TextStyle(
+                        style:
+                            TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ),
+
                     const Text(
-                      'Удерживайте раздел и перетащите его',
-                      style: TextStyle(
-                        color: Colors.white54,
+                      'Удерживайте раздел '
+                      'и перетащите его',
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.white54,
                       ),
                     ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(
+                      height: 8,
+                    ),
+
                     Expanded(
-                      child: ReorderableListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _categories.length - 1,
-                        onReorder: (
+                      child:
+                          ReorderableListView.builder(
+                        padding:
+                            const EdgeInsets.all(
+                          12,
+                        ),
+
+                        itemCount:
+                            _categories.length -
+                                1,
+
+                        onReorder:
+                            (
                           oldIndex,
                           newIndex,
                         ) async {
-                          if (oldIndex < newIndex) {
+                          if (oldIndex <
+                              newIndex) {
                             newIndex--;
                           }
 
-                          final fromIndex = oldIndex + 1;
-                          final toIndex = newIndex + 1;
+                          final fromIndex =
+                              oldIndex + 1;
+
+                          final toIndex =
+                              newIndex + 1;
 
                           final selectedIndex =
-                              _tabController?.index ?? 0;
+                              _tabController
+                                      ?.index ??
+                                  0;
 
                           final selectedCategory =
-                              _categories[selectedIndex];
+                              _categories[
+                                  selectedIndex];
 
                           setState(() {
-                            final item = _categories.removeAt(
+                            final item =
+                                _categories
+                                    .removeAt(
                               fromIndex,
                             );
 
@@ -662,45 +760,63 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                           });
 
-                          modalSetState(() {});
+                          modalSetState(
+                            () {},
+                          );
 
                           _recreateTabController(
                             selectedIndex:
-                                _categories.indexOf(
+                                _categories
+                                    .indexOf(
                               selectedCategory,
                             ),
                           );
 
                           await _saveData();
                         },
-                        itemBuilder: (
+
+                        itemBuilder:
+                            (
                           context,
                           index,
                         ) {
                           final category =
-                              _categories[index + 1];
+                              _categories[
+                                  index + 1];
 
                           return Card(
-                            key: ValueKey(
+                            key:
+                                ValueKey(
                               'category_$category',
                             ),
-                            child: ListTile(
-                              leading: const Icon(
-                                Icons.drag_handle,
+
+                            child:
+                                ListTile(
+                              leading:
+                                  const Icon(
+                                Icons
+                                    .drag_handle,
                               ),
-                              title: Text(
+
+                              title:
+                                  Text(
                                 category,
                               ),
-                              trailing: Row(
+
+                              trailing:
+                                  Row(
                                 mainAxisSize:
                                     MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    tooltip: 'Переименовать',
-                                    icon: const Icon(
+                                    tooltip:
+                                        'Переименовать',
+                                    icon:
+                                        const Icon(
                                       Icons.edit,
                                     ),
-                                    onPressed: () async {
+                                    onPressed:
+                                        () async {
                                       Navigator.pop(
                                         context,
                                       );
@@ -710,13 +826,18 @@ class _HomeScreenState extends State<HomeScreen>
                                       );
                                     },
                                   ),
+
                                   IconButton(
-                                    tooltip: 'Удалить',
-                                    icon: const Icon(
+                                    tooltip:
+                                        'Удалить',
+                                    icon:
+                                        const Icon(
                                       Icons.delete_outline,
-                                      color: Colors.redAccent,
+                                      color:
+                                          Colors.redAccent,
                                     ),
-                                    onPressed: () async {
+                                    onPressed:
+                                        () async {
                                       Navigator.pop(
                                         context,
                                       );
@@ -733,22 +854,31 @@ class _HomeScreenState extends State<HomeScreen>
                         },
                       ),
                     ),
+
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding:
+                          const EdgeInsets.all(
+                        16,
+                      ),
                       child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () async {
+                        width:
+                            double.infinity,
+                        child:
+                            FilledButton.icon(
+                          onPressed:
+                              () async {
                             Navigator.pop(
                               context,
                             );
 
                             await _addCategory();
                           },
-                          icon: const Icon(
+                          icon:
+                              const Icon(
                             Icons.add,
                           ),
-                          label: const Text(
+                          label:
+                              const Text(
                             'Добавить раздел',
                           ),
                         ),
@@ -769,23 +899,30 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _addNote() async {
-    final currentIndex = _tabController?.index ?? 0;
+    final currentIndex =
+        _tabController?.index ?? 0;
 
     final defaultCategory =
         currentIndex > 0 &&
-                currentIndex < _categories.length
-            ? _categories[currentIndex]
+                currentIndex <
+                    _categories.length
+            ? _categories[
+                currentIndex]
             : (_categories.length > 1
                 ? _categories[1]
                 : 'Личное');
 
     final result =
-        await Navigator.push<Map<String, dynamic>>(
+        await Navigator.push<
+            Map<String, dynamic>>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditorScreen(
-          categories: _categories,
-          initialCategory: defaultCategory,
+        builder: (context) =>
+            EditorScreen(
+          categories:
+              _categories,
+          initialCategory:
+              defaultCategory,
         ),
       ),
     );
@@ -795,15 +932,24 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final note = Note(
-      id: DateTime.now()
-          .microsecondsSinceEpoch
-          .toString(),
-      title: result['title']?.toString() ?? '',
+      id:
+          DateTime.now()
+              .microsecondsSinceEpoch
+              .toString(),
+
+      title:
+          result['title']
+                  ?.toString() ??
+              '',
+
       contentJson:
-          result['contentJson']?.toString() ??
+          result['contentJson']
+                  ?.toString() ??
               '[{"insert":"\\n"}]',
+
       category:
-          result['category']?.toString() ??
+          result['category']
+                  ?.toString() ??
               defaultCategory,
     );
 
@@ -822,13 +968,17 @@ class _HomeScreenState extends State<HomeScreen>
     Note note,
   ) async {
     final result =
-        await Navigator.push<Map<String, dynamic>>(
+        await Navigator.push<
+            Map<String, dynamic>>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditorScreen(
+        builder: (context) =>
+            EditorScreen(
           note: note,
-          categories: _categories,
-          initialCategory: note.category,
+          categories:
+              _categories,
+          initialCategory:
+              note.category,
         ),
       ),
     );
@@ -837,7 +987,8 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final index = _notes.indexWhere(
+    final index =
+        _notes.indexWhere(
       (n) => n.id == note.id,
     );
 
@@ -848,12 +999,20 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _notes[index] = Note(
         id: note.id,
-        title: result['title']?.toString() ?? '',
+
+        title:
+            result['title']
+                    ?.toString() ??
+                '',
+
         contentJson:
-            result['contentJson']?.toString() ??
+            result['contentJson']
+                    ?.toString() ??
                 '[{"insert":"\\n"}]',
+
         category:
-            result['category']?.toString() ??
+            result['category']
+                    ?.toString() ??
                 note.category,
       );
     });
@@ -868,18 +1027,23 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _deleteNote(
     Note note,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
+          title:
+              const Text(
             'Удалить заметку?',
           ),
-          content: Text(
+
+          content:
+              Text(
             note.title.isEmpty
                 ? 'Без названия'
                 : note.title,
           ),
+
           actions: [
             TextButton(
               onPressed: () {
@@ -888,11 +1052,17 @@ class _HomeScreenState extends State<HomeScreen>
                   false,
                 );
               },
-              child: const Text('Отмена'),
+              child:
+                  const Text(
+                'Отмена',
+              ),
             ),
+
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
                 Navigator.pop(
@@ -900,7 +1070,10 @@ class _HomeScreenState extends State<HomeScreen>
                   true,
                 );
               },
-              child: const Text('В корзину'),
+              child:
+                  const Text(
+                'В корзину',
+              ),
             ),
           ],
         );
@@ -945,10 +1118,13 @@ class _HomeScreenState extends State<HomeScreen>
         (n) => n.id == note.id,
       );
 
-      if (!_categories.contains(note.category)) {
-        note.category = _categories.length > 1
-            ? _categories[1]
-            : 'Личное';
+      if (!_categories.contains(
+        note.category,
+      )) {
+        note.category =
+            _categories.length > 1
+                ? _categories[1]
+                : 'Личное';
       }
 
       _notes.add(
@@ -970,18 +1146,23 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _deleteForever(
     Note note,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text(
+          title:
+              const Text(
             'Удалить навсегда?',
           ),
-          content: Text(
+
+          content:
+              Text(
             note.title.isEmpty
                 ? 'Без названия'
                 : note.title,
           ),
+
           actions: [
             TextButton(
               onPressed: () {
@@ -990,11 +1171,17 @@ class _HomeScreenState extends State<HomeScreen>
                   false,
                 );
               },
-              child: const Text('Отмена'),
+              child:
+                  const Text(
+                'Отмена',
+              ),
             ),
+
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
                 Navigator.pop(
@@ -1002,7 +1189,10 @@ class _HomeScreenState extends State<HomeScreen>
                   true,
                 );
               },
-              child: const Text('Удалить'),
+              child:
+                  const Text(
+                'Удалить',
+              ),
             ),
           ],
         );
@@ -1034,90 +1224,122 @@ class _HomeScreenState extends State<HomeScreen>
         return SafeArea(
           child: SizedBox(
             height:
-                MediaQuery.of(context).size.height * 0.8,
+                MediaQuery.of(context)
+                        .size
+                        .height *
+                    0.8,
+
             child: Column(
               children: [
                 const Padding(
-                  padding: EdgeInsets.all(16),
+                  padding:
+                      EdgeInsets.all(16),
                   child: Row(
                     children: [
                       Icon(
                         Icons.delete_outline,
                       ),
-                      SizedBox(width: 10),
+                      SizedBox(
+                        width: 10,
+                      ),
                       Text(
                         'Корзина',
-                        style: TextStyle(
+                        style:
+                            TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
+
                 if (_trash.isEmpty)
                   const Expanded(
                     child: Center(
-                      child: Text(
+                      child:
+                          Text(
                         'Корзина пуста',
                       ),
                     ),
                   )
                 else
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: _trash.length,
-                      itemBuilder: (
+                    child:
+                        ListView.builder(
+                      itemCount:
+                          _trash.length,
+
+                      itemBuilder:
+                          (
                         context,
                         index,
                       ) {
-                        final note = _trash[index];
+                        final note =
+                            _trash[index];
 
                         return ListTile(
-                          leading: const Icon(
-                            Icons.description_outlined,
+                          leading:
+                              const Icon(
+                            Icons
+                                .description_outlined,
                           ),
-                          title: Text(
+
+                          title:
+                              Text(
                             note.title.isEmpty
                                 ? 'Без названия'
                                 : note.title,
                             maxLines: 1,
                             overflow:
-                                TextOverflow.ellipsis,
+                                TextOverflow
+                                    .ellipsis,
                           ),
-                          subtitle: Text(
+
+                          subtitle:
+                              Text(
                             note.category,
                           ),
-                          trailing: Row(
+
+                          trailing:
+                              Row(
                             mainAxisSize:
                                 MainAxisSize.min,
                             children: [
                               IconButton(
-                                tooltip: 'Восстановить',
-                                icon: const Icon(
+                                tooltip:
+                                    'Восстановить',
+                                icon:
+                                    const Icon(
                                   Icons.restore,
                                 ),
-                                onPressed: () async {
+                                onPressed:
+                                    () async {
                                   await _restoreFromTrash(
                                     note,
                                   );
 
-                                  if (context.mounted) {
+                                  if (context
+                                      .mounted) {
                                     Navigator.pop(
                                       context,
                                     );
                                   }
                                 },
                               ),
+
                               IconButton(
                                 tooltip:
                                     'Удалить навсегда',
-                                icon: const Icon(
+                                icon:
+                                    const Icon(
                                   Icons.delete_forever,
                                   color:
                                       Colors.redAccent,
                                 ),
-                                onPressed: () async {
+                                onPressed:
+                                    () async {
                                   await _deleteForever(
                                     note,
                                   );
@@ -1129,35 +1351,50 @@ class _HomeScreenState extends State<HomeScreen>
                       },
                     ),
                   ),
+
                 if (_trash.isNotEmpty)
                   Padding(
                     padding:
-                        const EdgeInsets.all(16),
+                        const EdgeInsets.all(
+                      16,
+                    ),
                     child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(
-                          Icons.delete_forever,
+                      width:
+                          double.infinity,
+                      child:
+                          OutlinedButton.icon(
+                        icon:
+                            const Icon(
+                          Icons
+                              .delete_forever,
                         ),
-                        label: const Text(
+                        label:
+                            const Text(
                           'Очистить корзину',
                         ),
-                        onPressed: () async {
+                        onPressed:
+                            () async {
                           final confirmed =
-                              await showDialog<bool>(
-                            context: context,
-                            builder: (context) {
+                              await showDialog<
+                                  bool>(
+                            context:
+                                context,
+                            builder:
+                                (context) {
                               return AlertDialog(
-                                title: const Text(
+                                title:
+                                    const Text(
                                   'Очистить корзину?',
                                 ),
-                                content: const Text(
+                                content:
+                                    const Text(
                                   'Все заметки в корзине '
                                   'будут удалены навсегда.',
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () {
+                                    onPressed:
+                                        () {
                                       Navigator.pop(
                                         context,
                                         false,
@@ -1174,7 +1411,8 @@ class _HomeScreenState extends State<HomeScreen>
                                       backgroundColor:
                                           Colors.red,
                                     ),
-                                    onPressed: () {
+                                    onPressed:
+                                        () {
                                       Navigator.pop(
                                         context,
                                         true,
@@ -1190,14 +1428,16 @@ class _HomeScreenState extends State<HomeScreen>
                             },
                           );
 
-                          if (confirmed == true) {
+                          if (confirmed ==
+                              true) {
                             setState(() {
                               _trash.clear();
                             });
 
                             await _saveData();
 
-                            if (context.mounted) {
+                            if (context
+                                .mounted) {
                               Navigator.pop(
                                 context,
                               );
@@ -1228,13 +1468,16 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final visibleNotes = category == 'Все'
-        ? List<Note>.from(_notes)
-        : _notes
-            .where(
-              (n) => n.category == category,
-            )
-            .toList();
+    final visibleNotes =
+        category == 'Все'
+            ? List<Note>.from(_notes)
+            : _notes
+                .where(
+                  (n) =>
+                      n.category ==
+                      category,
+                )
+                .toList();
 
     if (oldIndex < 0 ||
         oldIndex >= visibleNotes.length) {
@@ -1243,10 +1486,12 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (newIndex < 0 ||
         newIndex >= visibleNotes.length) {
-      newIndex = visibleNotes.length - 1;
+      newIndex =
+          visibleNotes.length - 1;
     }
 
-    final moved = visibleNotes.removeAt(
+    final moved =
+        visibleNotes.removeAt(
       oldIndex,
     );
 
@@ -1261,10 +1506,14 @@ class _HomeScreenState extends State<HomeScreen>
       } else {
         int visibleIndex = 0;
 
-        for (int i = 0; i < _notes.length; i++) {
-          if (_notes[i].category == category) {
+        for (int i = 0;
+            i < _notes.length;
+            i++) {
+          if (_notes[i].category ==
+              category) {
             _notes[i] =
-                visibleNotes[visibleIndex];
+                visibleNotes[
+                    visibleIndex];
             visibleIndex++;
           }
         }
@@ -1291,7 +1540,9 @@ class _HomeScreenState extends State<HomeScreen>
         SnackBar(
           content: Text(text),
           duration:
-              const Duration(seconds: 2),
+              const Duration(
+            seconds: 2,
+          ),
         ),
       );
   }
@@ -1304,65 +1555,98 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(
     BuildContext context,
   ) {
-    if (_loading || _tabController == null) {
+    if (_loading ||
+        _tabController == null) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child:
+              CircularProgressIndicator(),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title:
+            const Text(
           'Мой Блокнот',
         ),
+
         actions: [
           IconButton(
-            tooltip: 'Корзина',
-            icon: const Icon(
+            tooltip:
+                'Корзина',
+            icon:
+                const Icon(
               Icons.delete_outline,
             ),
-            onPressed: _showTrash,
+            onPressed:
+                _showTrash,
           ),
+
           IconButton(
-            tooltip: 'Разделы',
-            icon: const Icon(
+            tooltip:
+                'Разделы',
+            icon:
+                const Icon(
               Icons.folder_open,
             ),
-            onPressed: _manageCategories,
+            onPressed:
+                _manageCategories,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: _categories
-              .map(
-                (category) => Tab(
-                  text: category,
-                ),
-              )
-              .toList(),
+
+        bottom:
+            TabBar(
+          controller:
+              _tabController,
+          isScrollable:
+              true,
+          tabs:
+              _categories
+                  .map(
+                    (category) =>
+                        Tab(
+                      text:
+                          category,
+                    ),
+                  )
+                  .toList(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _categories.map(
-          (category) {
-            final filteredNotes = category == 'Все'
-                ? List<Note>.from(_notes)
-                : _notes
-                    .where(
-                      (n) => n.category == category,
-                    )
-                    .toList();
 
-            if (filteredNotes.isEmpty) {
+      body:
+          TabBarView(
+        controller:
+            _tabController,
+
+        children:
+            _categories.map(
+          (category) {
+            final filteredNotes =
+                category == 'Все'
+                    ? List<Note>.from(
+                        _notes,
+                      )
+                    : _notes
+                        .where(
+                          (n) =>
+                              n.category ==
+                              category,
+                        )
+                        .toList();
+
+            if (filteredNotes
+                .isEmpty) {
               return Center(
-                child: Text(
+                child:
+                    Text(
                   'Здесь пока пусто',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(
+                  style:
+                      TextStyle(
+                    color:
+                        Colors.white
+                            .withOpacity(
                       0.54,
                     ),
                   ),
@@ -1371,24 +1655,41 @@ class _HomeScreenState extends State<HomeScreen>
             }
 
             return Padding(
-              padding: const EdgeInsets.all(8),
-              child: ReorderableGridView.builder(
-                padding: const EdgeInsets.only(
+              padding:
+                  const EdgeInsets.all(
+                8,
+              ),
+
+              child:
+                  ReorderableGridView.builder(
+                padding:
+                    const EdgeInsets.only(
                   bottom: 90,
                 ),
+
                 gridDelegate:
                     const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1.1,
+                  crossAxisCount:
+                      2,
+                  crossAxisSpacing:
+                      8,
+                  mainAxisSpacing:
+                      8,
+                  childAspectRatio:
+                      1.1,
                 ),
-                itemCount: filteredNotes.length,
+
+                itemCount:
+                    filteredNotes.length,
+
                 dragStartDelay:
                     const Duration(
-                  milliseconds: 450,
+                  milliseconds:
+                      450,
                 ),
-                onReorder: (
+
+                onReorder:
+                    (
                   oldIndex,
                   newIndex,
                 ) {
@@ -1398,61 +1699,95 @@ class _HomeScreenState extends State<HomeScreen>
                     newIndex,
                   );
                 },
-                itemBuilder: (
+
+                itemBuilder:
+                    (
                   context,
                   index,
                 ) {
-                  final note = filteredNotes[index];
+                  final note =
+                      filteredNotes[
+                          index];
 
                   return Card(
-                    key: ValueKey(
+                    key:
+                        ValueKey(
                       note.id,
                     ),
-                    child: InkWell(
+
+                    child:
+                        InkWell(
                       borderRadius:
-                          BorderRadius.circular(
+                          BorderRadius
+                              .circular(
                         12,
                       ),
-                      onTap: () => _editNote(
+
+                      onTap: () =>
+                          _editNote(
                         note,
                       ),
-                      child: Padding(
+
+                      child:
+                          Padding(
                         padding:
-                            const EdgeInsets.all(
+                            const EdgeInsets
+                                .all(
                           12,
                         ),
-                        child: Column(
+
+                        child:
+                            Column(
                           crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
+
                           children: [
                             Row(
                               crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  CrossAxisAlignment
+                                      .start,
+
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    note.title.isEmpty
+                                  child:
+                                      Text(
+                                    note.title
+                                            .isEmpty
                                         ? 'Без названия'
                                         : note.title,
+
                                     style:
                                         const TextStyle(
                                       fontWeight:
                                           FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize:
+                                          16,
                                     ),
-                                    maxLines: 2,
+
+                                    maxLines:
+                                        2,
+
                                     overflow:
-                                        TextOverflow.ellipsis,
+                                        TextOverflow
+                                            .ellipsis,
                                   ),
                                 ),
-                                PopupMenuButton<String>(
+
+                                PopupMenuButton<
+                                    String>(
                                   padding:
                                       EdgeInsets.zero,
-                                  icon: const Icon(
+
+                                  icon:
+                                      const Icon(
                                     Icons.more_vert,
-                                    size: 20,
+                                    size:
+                                        20,
                                   ),
-                                  onSelected: (
+
+                                  onSelected:
+                                      (
                                     value,
                                   ) async {
                                     if (value ==
@@ -1462,13 +1797,17 @@ class _HomeScreenState extends State<HomeScreen>
                                       );
                                     }
                                   },
+
                                   itemBuilder:
-                                      (context) =>
-                                          const [
+                                      (
+                                    context,
+                                  ) =>
+                                      const [
                                     PopupMenuItem(
                                       value:
                                           'delete',
-                                      child: Row(
+                                      child:
+                                          Row(
                                         children: [
                                           Icon(
                                             Icons.delete_outline,
@@ -1476,7 +1815,8 @@ class _HomeScreenState extends State<HomeScreen>
                                                 Colors.red,
                                           ),
                                           SizedBox(
-                                            width: 8,
+                                            width:
+                                                8,
                                           ),
                                           Text(
                                             'В корзину',
@@ -1488,27 +1828,39 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ],
                             ),
+
                             const Spacer(),
+
                             Container(
                               padding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                                  const EdgeInsets
+                                      .symmetric(
+                                horizontal:
+                                    6,
+                                vertical:
+                                    2,
                               ),
+
                               decoration:
                                   BoxDecoration(
-                                color: Colors.white10,
+                                color:
+                                    Colors.white10,
                                 borderRadius:
-                                    BorderRadius.circular(
+                                    BorderRadius
+                                        .circular(
                                   4,
                                 ),
                               ),
-                              child: Text(
+
+                              child:
+                                  Text(
                                 note.category,
                                 style:
                                     const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.amber,
+                                  fontSize:
+                                      10,
+                                  color:
+                                      Colors.amber,
                                 ),
                               ),
                             ),
@@ -1523,10 +1875,13 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ).toList(),
       ),
+
       floatingActionButton:
           FloatingActionButton(
-        onPressed: _addNote,
-        child: const Icon(
+        onPressed:
+            _addNote,
+        child:
+            const Icon(
           Icons.add,
         ),
       ),
@@ -1573,13 +1928,15 @@ class _EditorScreenState
     extends State<EditorScreen> {
   late QuillController _controller;
 
-  final TextEditingController _titleController =
+  final TextEditingController
+      _titleController =
       TextEditingController();
 
   final FocusNode _focusNode =
       FocusNode();
 
-  final ScrollController _scrollController =
+  final ScrollController
+      _scrollController =
       ScrollController();
 
   late String _selectedCategory;
@@ -1599,6 +1956,16 @@ class _EditorScreenState
 
     _controller =
         _createController();
+
+    _controller.addListener(
+      _onControllerChanged,
+    );
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   // ==========================================================
@@ -1610,7 +1977,8 @@ class _EditorScreenState
       _titleController.text =
           widget.note!.title;
 
-      if (widget.categories.contains(
+      if (widget.categories
+          .contains(
         widget.note!.category,
       )) {
         return widget.note!.category;
@@ -1624,7 +1992,8 @@ class _EditorScreenState
             )
             .toList();
 
-    if (widget.initialCategory != null &&
+    if (widget.initialCategory !=
+            null &&
         available.contains(
           widget.initialCategory,
         )) {
@@ -1666,29 +2035,34 @@ class _EditorScreenState
           );
 
           return QuillController(
-            document: document,
+            document:
+                document,
+
             selection:
                 TextSelection.collapsed(
-              offset: document.length - 1,
+              offset:
+                  document.length - 1,
             ),
 
-            // Сохраняем форматирование
-            // при переходе на новую строку.
+            // Сохраняем активный стиль
+            // после Enter.
             keepStyleOnNewLine: true,
           );
         }
-      } catch (_) {
-        // Повреждённый/старый JSON.
-      }
+      } catch (_) {}
     }
 
     return QuillController(
-      document: Document(),
+      document:
+          Document(),
+
       selection:
           const TextSelection.collapsed(
         offset: 0,
       ),
-      keepStyleOnNewLine: true,
+
+      keepStyleOnNewLine:
+          true,
     );
   }
 
@@ -1721,7 +2095,8 @@ class _EditorScreenState
     final result =
         <String, dynamic>{
       'title':
-          _titleController.text.trim(),
+          _titleController.text
+              .trim(),
 
       'contentJson':
           _getContentJson(),
@@ -1743,10 +2118,12 @@ class _EditorScreenState
   Future<void> _saveToDevice() async {
     try {
       final title =
-          _titleController.text.trim();
+          _titleController.text
+              .trim();
 
       final plainText =
-          _controller.document.toPlainText();
+          _controller.document
+              .toPlainText();
 
       final safeTitle =
           _safeFileName(
@@ -1773,14 +2150,9 @@ class _EditorScreenState
         flush: true,
       );
 
-      if (!await tempFile.exists()) {
-        throw Exception(
-          'Временный TXT-файл не создан.',
-        );
-      }
-
       final savedPath =
-          await FlutterFileDialog.saveFile(
+          await FlutterFileDialog
+              .saveFile(
         params:
             SaveFileDialogParams(
           sourceFilePath:
@@ -1862,19 +2234,442 @@ class _EditorScreenState
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(text),
+          content:
+              Text(text),
           duration:
-              const Duration(seconds: 3),
+              const Duration(
+            seconds: 3,
+          ),
         ),
       );
   }
 
   // ==========================================================
-  // TOOLBAR
+  // FORMAT
   //
-  // Одна горизонтальная строка.
-  // Если кнопки не помещаются на экране —
-  // панель прокручивается пальцем влево/вправо.
+  // Здесь мы НЕ используем QuillSimpleToolbar.
+  //
+  // Все кнопки напрямую работают с QuillController.
+  // ==========================================================
+
+  void _format(
+    Attribute attribute,
+  ) {
+    _focusNode.requestFocus();
+
+    _controller.formatSelection(
+      attribute,
+    );
+
+    setState(() {});
+  }
+
+  void _undo() {
+    _controller.undo();
+    _focusNode.requestFocus();
+    setState(() {});
+  }
+
+  void _redo() {
+    _controller.redo();
+    _focusNode.requestFocus();
+    setState(() {});
+  }
+
+  void _indent(bool increase) {
+    _focusNode.requestFocus();
+
+    _controller.indentSelection(
+      increase,
+    );
+
+    setState(() {});
+  }
+
+  // ==========================================================
+  // TOOL BUTTON
+  // ==========================================================
+
+  Widget _toolButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 46,
+      height: 48,
+
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+
+        icon: Icon(
+          icon,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _textToolButton({
+    required String text,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 46,
+      height: 48,
+
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+
+        icon: Text(
+          text,
+          style:
+              const TextStyle(
+            fontSize: 18,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // COLOR BUTTON
+  // ==========================================================
+
+  void _showTextColors() {
+    _focusNode.requestFocus();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        final colors = <Color>[
+          Colors.white,
+          Colors.red,
+          Colors.orange,
+          Colors.yellow,
+          Colors.green,
+          Colors.cyan,
+          Colors.blue,
+          Colors.purple,
+          Colors.pink,
+          Colors.grey,
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding:
+                const EdgeInsets.all(16),
+
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+
+              children:
+                  colors.map(
+                (color) {
+                  return InkWell(
+                    onTap: () {
+                      Navigator.pop(
+                        context,
+                      );
+
+                      final value =
+                          '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
+
+                      final attribute =
+                          Attribute.fromKeyValue(
+                        Attribute.color.key,
+                        value,
+                      );
+
+                      if (attribute != null) {
+                        _controller
+                            .formatSelection(
+                          attribute,
+                        );
+                      }
+
+                      setState(() {});
+                    },
+
+                    borderRadius:
+                        BorderRadius
+                            .circular(
+                      24,
+                    ),
+
+                    child: Container(
+                      width: 42,
+                      height: 42,
+
+                      decoration:
+                          BoxDecoration(
+                        color: color,
+                        shape:
+                            BoxShape.circle,
+
+                        border:
+                            Border.all(
+                          color:
+                              Colors.white54,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // HEADER
+  // ==========================================================
+
+  void _showHeaderMenu() {
+    _focusNode.requestFocus();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize:
+                MainAxisSize.min,
+
+            children: [
+              ListTile(
+                leading:
+                    const Text(
+                  'H1',
+                  style:
+                      TextStyle(
+                    fontSize: 20,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                title:
+                    const Text(
+                  'Заголовок 1',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.h1,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Text(
+                  'H2',
+                  style:
+                      TextStyle(
+                    fontSize: 19,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                title:
+                    const Text(
+                  'Заголовок 2',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.h2,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Text(
+                  'H3',
+                  style:
+                      TextStyle(
+                    fontSize: 18,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                title:
+                    const Text(
+                  'Заголовок 3',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.h3,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Icon(
+                  Icons.text_fields,
+                ),
+
+                title:
+                    const Text(
+                  'Обычный текст',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.header,
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // ALIGNMENT
+  // ==========================================================
+
+  void _showAlignmentMenu() {
+    _focusNode.requestFocus();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize:
+                MainAxisSize.min,
+
+            children: [
+              ListTile(
+                leading:
+                    const Icon(
+                  Icons.format_align_left,
+                ),
+
+                title:
+                    const Text(
+                  'По левому краю',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.leftAlignment,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Icon(
+                  Icons.format_align_center,
+                ),
+
+                title:
+                    const Text(
+                  'По центру',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.centerAlignment,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Icon(
+                  Icons.format_align_right,
+                ),
+
+                title:
+                    const Text(
+                  'По правому краю',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.rightAlignment,
+                  );
+                },
+              ),
+
+              ListTile(
+                leading:
+                    const Icon(
+                  Icons.format_align_justify,
+                ),
+
+                title:
+                    const Text(
+                  'По ширине',
+                ),
+
+                onTap: () {
+                  Navigator.pop(
+                    context,
+                  );
+
+                  _format(
+                    Attribute.justifyAlignment,
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================================
+  // CUSTOM TOOLBAR
   // ==========================================================
 
   Widget _buildToolbar() {
@@ -1889,104 +2684,328 @@ class _EditorScreenState
 
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).dividerColor,
+            color:
+                Theme.of(context)
+                    .dividerColor,
           ),
+
           bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
+            color:
+                Theme.of(context)
+                    .dividerColor,
           ),
         ),
       ),
 
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+        scrollDirection:
+            Axis.horizontal,
 
-        padding: const EdgeInsets.symmetric(
-          horizontal: 4,
-        ),
+        physics:
+            const BouncingScrollPhysics(),
 
-        child: QuillSimpleToolbar(
-          controller: _controller,
+        child: Row(
+          children: [
+            // UNDO
+            _toolButton(
+              icon:
+                  Icons.undo,
+              tooltip:
+                  'Отменить',
+              onPressed:
+                  _undo,
+            ),
 
-          config:
-              const QuillSimpleToolbarConfig(
-            // ОДНА строка.
-            multiRowsDisplay: false,
+            // REDO
+            _toolButton(
+              icon:
+                  Icons.redo,
+              tooltip:
+                  'Повторить',
+              onPressed:
+                  _redo,
+            ),
 
-            // ------------------------------
-            // TEXT
-            // ------------------------------
+            const VerticalDivider(
+              width: 1,
+              indent: 8,
+              endIndent: 8,
+            ),
 
-            showBoldButton: true,
-            showItalicButton: true,
-            showUnderLineButton: true,
-            showStrikeThrough: true,
+            // BOLD
+            _textToolButton(
+              text:
+                  'B',
+              tooltip:
+                  'Жирный',
+              onPressed: () {
+                _format(
+                  Attribute.bold,
+                );
+              },
+            ),
 
-            // ------------------------------
+            // ITALIC
+            _textToolButton(
+              text:
+                  'I',
+              tooltip:
+                  'Курсив',
+              onPressed: () {
+                _format(
+                  Attribute.italic,
+                );
+              },
+            ),
+
+            // UNDERLINE
+            _textToolButton(
+              text:
+                  'U',
+              tooltip:
+                  'Подчёркивание',
+              onPressed: () {
+                _format(
+                  Attribute.underline,
+                );
+              },
+            ),
+
+            // STRIKE
+            _textToolButton(
+              text:
+                  'S',
+              tooltip:
+                  'Зачёркивание',
+              onPressed: () {
+                _format(
+                  Attribute.strikeThrough,
+                );
+              },
+            ),
+
+            const VerticalDivider(
+              width: 1,
+              indent: 8,
+              endIndent: 8,
+            ),
+
             // COLOR
-            // ------------------------------
+            _toolButton(
+              icon:
+                  Icons.format_color_text,
+              tooltip:
+                  'Цвет текста',
+              onPressed:
+                  _showTextColors,
+            ),
 
-            showColorButton: true,
-            showBackgroundColorButton: true,
+            // HEADER
+            _toolButton(
+              icon:
+                  Icons.title,
+              tooltip:
+                  'Заголовок',
+              onPressed:
+                  _showHeaderMenu,
+            ),
 
-            // ------------------------------
-            // CLEAR
-            // ------------------------------
+            const VerticalDivider(
+              width: 1,
+              indent: 8,
+              endIndent: 8,
+            ),
 
-            showClearFormat: true,
+            // BULLET LIST
+            _toolButton(
+              icon:
+                  Icons.format_list_bulleted,
+              tooltip:
+                  'Маркированный список',
+              onPressed: () {
+                _format(
+                  Attribute.ul,
+                );
+              },
+            ),
 
-            // ------------------------------
-            // HEADERS
-            // ------------------------------
+            // NUMBERED LIST
+            _toolButton(
+              icon:
+                  Icons.format_list_numbered,
+              tooltip:
+                  'Нумерованный список',
+              onPressed: () {
+                _format(
+                  Attribute.ol,
+                );
+              },
+            ),
 
-            showHeaderStyle: true,
+            // CHECK LIST
+            _toolButton(
+              icon:
+                  Icons.checklist,
+              tooltip:
+                  'Список с галочками',
+              onPressed: () {
+                _format(
+                  Attribute.unchecked,
+                );
+              },
+            ),
 
-            // ------------------------------
-            // LISTS
-            // ------------------------------
+            // QUOTE
+            _toolButton(
+              icon:
+                  Icons.format_quote,
+              tooltip:
+                  'Цитата',
+              onPressed: () {
+                _format(
+                  Attribute.blockQuote,
+                );
+              },
+            ),
 
-            showListNumbers: true,
-            showListBullets: true,
-            showListCheck: true,
+            // CODE
+            _toolButton(
+              icon:
+                  Icons.code,
+              tooltip:
+                  'Код',
+              onPressed: () {
+                _format(
+                  Attribute.codeBlock,
+                );
+              },
+            ),
 
-            // ------------------------------
-            // BLOCK
-            // ------------------------------
+            const VerticalDivider(
+              width: 1,
+              indent: 8,
+              endIndent: 8,
+            ),
 
-            showQuote: true,
-            showCodeBlock: true,
+            // ALIGN
+            _toolButton(
+              icon:
+                  Icons.format_align_left,
+              tooltip:
+                  'Выравнивание',
+              onPressed:
+                  _showAlignmentMenu,
+            ),
 
-            // ------------------------------
-            // LINK
-            // ------------------------------
+            // DECREASE INDENT
+            _toolButton(
+              icon:
+                  Icons.format_indent_decrease,
+              tooltip:
+                  'Уменьшить отступ',
+              onPressed: () {
+                _indent(false);
+              },
+            ),
 
-            showLink: true,
+            // INCREASE INDENT
+            _toolButton(
+              icon:
+                  Icons.format_indent_increase,
+              tooltip:
+                  'Увеличить отступ',
+              onPressed: () {
+                _indent(true);
+              },
+            ),
 
-            // ------------------------------
-            // UNDO / REDO
-            // ------------------------------
+            const VerticalDivider(
+              width: 1,
+              indent: 8,
+              endIndent: 8,
+            ),
 
-            showUndo: true,
-            showRedo: true,
+            // SUBSCRIPT
+            _toolButton(
+              icon:
+                  Icons.subscript,
+              tooltip:
+                  'Нижний индекс',
+              onPressed: () {
+                _format(
+                  const ScriptAttribute(
+                    'sub',
+                  ),
+                );
+              },
+            ),
 
-            // ------------------------------
-            // ALIGNMENT
-            // ------------------------------
+            // SUPERSCRIPT
+            _toolButton(
+              icon:
+                  Icons.superscript,
+              tooltip:
+                  'Верхний индекс',
+              onPressed: () {
+                _format(
+                  const ScriptAttribute(
+                    'super',
+                  ),
+                );
+              },
+            ),
 
-            showAlignmentButtons: true,
+            // CLEAR FORMAT
+            _toolButton(
+              icon:
+                  Icons.format_clear,
+              tooltip:
+                  'Очистить форматирование',
+              onPressed: () {
+                _format(
+                  Attribute.clone(
+                    Attribute.bold,
+                    null,
+                  ),
+                );
 
-            // ------------------------------
-            // INDENT
-            // ------------------------------
+                _format(
+                  Attribute.clone(
+                    Attribute.italic,
+                    null,
+                  ),
+                );
 
-            showIndent: true,
+                _format(
+                  Attribute.clone(
+                    Attribute.underline,
+                    null,
+                  ),
+                );
 
-            // ------------------------------
-            // SCRIPT
-            // ------------------------------
+                _format(
+                  Attribute.clone(
+                    Attribute.strikeThrough,
+                    null,
+                  ),
+                );
 
-            showSubscript: true,
-            showSuperscript: true,
-          ),
+                _format(
+                  Attribute.clone(
+                    Attribute.color,
+                    null,
+                  ),
+                );
+
+                _format(
+                  Attribute.clone(
+                    Attribute.background,
+                    null,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -2000,10 +3019,12 @@ class _EditorScreenState
   Widget build(
     BuildContext context,
   ) {
-    return PopScope<Map<String, dynamic>?>(
+    return PopScope<
+        Map<String, dynamic>?>(
       canPop: false,
 
-      onPopInvokedWithResult: (
+      onPopInvokedWithResult:
+          (
         didPop,
         result,
       ) {
@@ -2014,19 +3035,28 @@ class _EditorScreenState
         _saveNoteAndClose();
       },
 
-      child: Scaffold(
-        appBar: AppBar(
-          title: TextField(
-            controller: _titleController,
+      child:
+          Scaffold(
+        appBar:
+            AppBar(
+          title:
+              TextField(
+            controller:
+                _titleController,
 
-            style: const TextStyle(
+            style:
+                const TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+                  FontWeight.bold,
             ),
 
-            decoration: const InputDecoration(
-              hintText: 'Название заметки',
-              border: InputBorder.none,
+            decoration:
+                const InputDecoration(
+              hintText:
+                  'Название заметки',
+              border:
+                  InputBorder.none,
             ),
 
             textInputAction:
@@ -2035,43 +3065,53 @@ class _EditorScreenState
 
           actions: [
             IconButton(
-              tooltip: 'Сохранить как TXT',
+              tooltip:
+                  'Сохранить как TXT',
 
-              icon: const Icon(
+              icon:
+                  const Icon(
                 Icons.file_download_outlined,
               ),
 
-              onPressed: _saveToDevice,
+              onPressed:
+                  _saveToDevice,
             ),
 
             IconButton(
-              tooltip: 'Сохранить',
+              tooltip:
+                  'Сохранить',
 
-              icon: const Icon(
+              icon:
+                  const Icon(
                 Icons.save,
               ),
 
-              onPressed: _saveNoteAndClose,
+              onPressed:
+                  _saveNoteAndClose,
             ),
           ],
         ),
 
-        body: SafeArea(
-          child: Column(
+        body:
+            SafeArea(
+          child:
+              Column(
             children: [
               // =================================================
               // CATEGORY
               // =================================================
 
               Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding:
+                    const EdgeInsets.fromLTRB(
                   12,
                   8,
                   12,
                   4,
                 ),
 
-                child: Row(
+                child:
+                    Row(
                   children: [
                     const Icon(
                       Icons.folder_outlined,
@@ -2095,40 +3135,46 @@ class _EditorScreenState
                           DropdownButtonHideUnderline(
                         child:
                             DropdownButton<String>(
-                          value: widget.categories
-                                  .contains(
-                                _selectedCategory,
-                              )
-                              ? _selectedCategory
-                              : null,
+                          value:
+                              widget.categories
+                                      .contains(
+                                    _selectedCategory,
+                                  )
+                                  ? _selectedCategory
+                                  : null,
 
-                          isExpanded: true,
+                          isExpanded:
+                              true,
 
-                          items: widget.categories
-                              .where(
-                                (category) =>
-                                    category !=
-                                    'Все',
-                              )
-                              .map(
-                                (
-                                  category,
-                                ) =>
-                                    DropdownMenuItem<
-                                        String>(
-                                  value: category,
+                          items:
+                              widget.categories
+                                  .where(
+                                    (category) =>
+                                        category !=
+                                        'Все',
+                                  )
+                                  .map(
+                                    (
+                                      category,
+                                    ) =>
+                                        DropdownMenuItem<String>(
+                                      value:
+                                          category,
 
-                                  child: Text(
-                                    category,
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                                      child:
+                                          Text(
+                                        category,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
 
-                          onChanged: (
+                          onChanged:
+                              (
                             value,
                           ) {
-                            if (value == null) {
+                            if (value ==
+                                null) {
                               return;
                             }
 
@@ -2149,14 +3195,7 @@ class _EditorScreenState
               ),
 
               // =================================================
-              // TOOLBAR
-              //
-              // ВАЖНО:
-              // _buildToolbar() уже содержит
-              // горизонтальную прокрутку.
-              //
-              // Поэтому здесь НЕТ дополнительного
-              // SingleChildScrollView.
+              // OUR TOOLBAR
               // =================================================
 
               _buildToolbar(),
@@ -2166,32 +3205,42 @@ class _EditorScreenState
               // =================================================
 
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(
+                child:
+                    Padding(
+                  padding:
+                      const EdgeInsets.all(
                     8,
                   ),
 
-                  child: QuillEditor(
-                    controller: _controller,
+                  child:
+                      QuillEditor(
+                    controller:
+                        _controller,
 
-                    focusNode: _focusNode,
+                    focusNode:
+                        _focusNode,
 
                     scrollController:
                         _scrollController,
 
                     config:
                         const QuillEditorConfig(
-                      padding: EdgeInsets.all(
+                      padding:
+                          EdgeInsets.all(
                         12,
                       ),
 
-                      expands: true,
+                      expands:
+                          true,
 
-                      autoFocus: false,
+                      autoFocus:
+                          false,
 
-                      showCursor: true,
+                      showCursor:
+                          true,
 
-                      scrollable: true,
+                      scrollable:
+                          true,
 
                       enableInteractiveSelection:
                           true,
@@ -2215,6 +3264,10 @@ class _EditorScreenState
 
   @override
   void dispose() {
+    _controller.removeListener(
+      _onControllerChanged,
+    );
+
     _controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
