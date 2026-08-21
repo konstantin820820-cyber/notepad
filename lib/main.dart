@@ -2925,36 +2925,6 @@ class _EditorScreenState
               endIndent: 8,
             ),
 
-            // SUBSCRIPT
-            _toolButton(
-              icon:
-                  Icons.subscript,
-              tooltip:
-                  'Нижний индекс',
-              onPressed: () {
-                _format(
-                 ScriptAttribute(
-                    'sub',
-                  ),
-                );
-              },
-            ),
-
-            // SUPERSCRIPT
-            _toolButton(
-              icon:
-                  Icons.superscript,
-              tooltip:
-                  'Верхний индекс',
-              onPressed: () {
-                _format(
-                  ScriptAttribute(
-                    'super',
-                  ),
-                );
-              },
-            ),
-
             // CLEAR FORMAT
             _toolButton(
               icon:
