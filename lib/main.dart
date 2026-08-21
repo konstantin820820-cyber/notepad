@@ -227,22 +227,74 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
+  final prefs =
+      await SharedPreferences.getInstance();
 
-    await prefs.setStringList(
-      'local_categories',
-      _categories,
-    );
+  final notesMap = _notes
+      .map(
+        (note) => note.toMap(),
+      )
+      .toList();
 
-    await prefs.setString(
-      'local_notes_v5',
-      jsonEncode(
-        _notes
-            .map((note) => note.toMap())
-            .toList(),
-      ),
-    );
-  }
+  final jsonToSave =
+      jsonEncode(notesMap);
+
+  debugPrint(
+    '========================================',
+  );
+  debugPrint(
+    'SHARED PREFERENCES SAVE',
+  );
+  debugPrint(
+    'NOTES COUNT: ${_notes.length}',
+  );
+  debugPrint(
+    'JSON LENGTH: ${jsonToSave.length}',
+  );
+  debugPrint(
+    'JSON TO SAVE:',
+  );
+  debugPrint(jsonToSave);
+  debugPrint(
+    '========================================',
+  );
+
+  await prefs.setString(
+    'local_notes_v5',
+    jsonToSave,
+  );
+
+  // Проверяем, что SharedPreferences
+  // действительно принял сохранённое значение.
+  final check =
+      prefs.getString('local_notes_v5');
+
+  debugPrint(
+    '========== AFTER SAVE CHECK ==========',
+  );
+
+  debugPrint(
+    'SAVED JSON LENGTH: '
+    '${check?.length ?? 0}',
+  );
+
+  debugPrint(
+    'SAVED JSON:',
+  );
+
+  debugPrint(
+    check ?? 'NULL',
+  );
+
+  debugPrint(
+    '========================================',
+  );
+
+  await prefs.setStringList(
+    'local_categories',
+    _categories,
+  );
+}
 
   // ==========================================================
   // TAB CONTROLLER
@@ -980,83 +1032,35 @@ Future<void> _editNote(
   );
 
   if (result == null) {
+    debugPrint(
+      '========== EDIT RESULT = NULL ==========',
+    );
     return;
   }
 
-  // ========================================================
-  // ДИАГНОСТИКА:
-  // Проверяем, что реально вернул EditorScreen
-  // ========================================================
-
-  final returnedContent =
-      result['contentJson']?.toString() ?? '';
-
-  final returnedTitle =
-      result['title']?.toString() ?? '';
-
-  final returnedCategory =
-      result['category']?.toString() ?? '';
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text(
-          'ДИАГНОСТИКА HOME',
-        ),
-
-        content: SizedBox(
-          width: double.maxFinite,
-          height:
-              MediaQuery.of(context).size.height * 0.65,
-
-          child: SingleChildScrollView(
-            child: SelectableText(
-              '========== RESULT ==========\n\n'
-
-              'TITLE:\n'
-              '$returnedTitle\n\n'
-
-              'CATEGORY:\n'
-              '$returnedCategory\n\n'
-
-              'CONTENT JSON LENGTH:\n'
-              '${returnedContent.length}\n\n'
-
-              'CONTENT JSON:\n'
-              '$returnedContent\n\n'
-
-              'FULL RESULT:\n'
-              '${result.toString()}\n\n'
-
-              '============================',
-              style: const TextStyle(
-                fontSize: 12,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        ),
-
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(
-                dialogContext,
-              );
-            },
-            child: const Text(
-              'Продолжить',
-            ),
-          ),
-        ],
-      );
-    },
+  debugPrint(
+    '========== HOME RECEIVED RESULT ==========',
   );
 
-  // ========================================================
-  // ОБЫЧНОЕ СОХРАНЕНИЕ
-  // ========================================================
+  debugPrint(
+    'TITLE FROM EDITOR: ${result['title']}',
+  );
+
+  debugPrint(
+    'CATEGORY FROM EDITOR: ${result['category']}',
+  );
+
+  final receivedContent =
+      result['contentJson']?.toString() ?? '';
+
+  debugPrint(
+    'CONTENT FROM EDITOR: $receivedContent',
+  );
+
+  debugPrint(
+    'CONTENT LENGTH FROM EDITOR: '
+    '${receivedContent.length}',
+  );
 
   setState(() {
     final index = _notes.indexWhere(
@@ -1066,26 +1070,48 @@ Future<void> _editNote(
     if (index != -1) {
       _notes[index] = Note(
         id: note.id,
-
         title:
-            result['title'] ?? '',
-
+            result['title']?.toString() ?? '',
         contentJson:
-            result['contentJson'] ??
-                '[{"insert":"\\n"}]',
-
+            receivedContent.isEmpty
+                ? '[{"insert":"\\n"}]'
+                : receivedContent,
         category:
-            result['category'] ??
+            result['category']?.toString() ??
                 note.category,
       );
     }
   });
 
-  // ========================================================
-  // СОХРАНЕНИЕ В SHARED PREFERENCES
-  // ========================================================
+  debugPrint(
+    '========== BEFORE _saveData() ==========',
+  );
+
+  final changedNote =
+      _notes.firstWhere(
+    (n) => n.id == note.id,
+  );
+
+  debugPrint(
+    'NOTE TITLE BEFORE SAVE: '
+    '${changedNote.title}',
+  );
+
+  debugPrint(
+    'NOTE CONTENT BEFORE SAVE: '
+    '${changedNote.contentJson}',
+  );
+
+  debugPrint(
+    'NOTE CONTENT LENGTH BEFORE SAVE: '
+    '${changedNote.contentJson.length}',
+  );
 
   await _saveData();
+
+  debugPrint(
+    '========== _saveData() FINISHED ==========',
+  );
 }
 
   // ==========================================================
