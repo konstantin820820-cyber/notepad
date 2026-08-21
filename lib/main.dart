@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fleather/fleather.dart';
@@ -149,13 +150,19 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final savedCategories = prefs.getStringList(_categoriesKey);
-    final notesString = prefs.getString(_notesKey);
-    final trashString = prefs.getString(_trashKey);
+    final savedCategories =
+        prefs.getStringList(_categoriesKey);
+
+    final notesString =
+        prefs.getString(_notesKey);
+
+    final trashString =
+        prefs.getString(_trashKey);
 
     List<String> categories;
 
-    if (savedCategories == null || savedCategories.isEmpty) {
+    if (savedCategories == null ||
+        savedCategories.isEmpty) {
       categories = [
         'Все',
         'Личное',
@@ -166,7 +173,9 @@ class _HomeScreenState extends State<HomeScreen>
     } else {
       categories = List<String>.from(savedCategories);
 
-      categories.removeWhere((c) => c == 'Все');
+      categories.removeWhere(
+        (c) => c == 'Все',
+      );
 
       categories.insert(0, 'Все');
     }
@@ -174,7 +183,8 @@ class _HomeScreenState extends State<HomeScreen>
     List<Note> notes = [];
     List<Note> trash = [];
 
-    if (notesString != null && notesString.isNotEmpty) {
+    if (notesString != null &&
+        notesString.isNotEmpty) {
       try {
         final decoded = jsonDecode(notesString);
 
@@ -193,7 +203,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
-    if (trashString != null && trashString.isNotEmpty) {
+    if (trashString != null &&
+        trashString.isNotEmpty) {
       try {
         final decoded = jsonDecode(trashString);
 
@@ -213,7 +224,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final fallbackCategory =
-        categories.length > 1 ? categories[1] : 'Личное';
+        categories.length > 1
+            ? categories[1]
+            : 'Личное';
 
     for (final note in notes) {
       if (!categories.contains(note.category)) {
@@ -267,14 +280,22 @@ class _HomeScreenState extends State<HomeScreen>
     await prefs.setString(
       _notesKey,
       jsonEncode(
-        _notes.map((note) => note.toMap()).toList(),
+        _notes
+            .map(
+              (note) => note.toMap(),
+            )
+            .toList(),
       ),
     );
 
     await prefs.setString(
       _trashKey,
       jsonEncode(
-        _trash.map((note) => note.toMap()).toList(),
+        _trash
+            .map(
+              (note) => note.toMap(),
+            )
+            .toList(),
       ),
     );
   }
@@ -325,7 +346,8 @@ class _HomeScreenState extends State<HomeScreen>
           content: TextField(
             controller: controller,
             autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
+            textCapitalization:
+                TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Название',
               hintText: 'Например: Статьи',
@@ -342,10 +364,14 @@ class _HomeScreenState extends State<HomeScreen>
 
             FilledButton(
               onPressed: () {
-                final value = controller.text.trim();
+                final value =
+                    controller.text.trim();
 
                 if (value.isNotEmpty) {
-                  Navigator.pop(context, value);
+                  Navigator.pop(
+                    context,
+                    value,
+                  );
                 }
               },
               child: const Text('Добавить'),
@@ -357,14 +383,17 @@ class _HomeScreenState extends State<HomeScreen>
 
     controller.dispose();
 
-    if (name == null || name.trim().isEmpty) {
+    if (name == null ||
+        name.trim().isEmpty) {
       return;
     }
 
     final newName = name.trim();
 
     if (_categories.contains(newName)) {
-      _showMessage('Такой раздел уже существует');
+      _showMessage(
+        'Такой раздел уже существует',
+      );
       return;
     }
 
@@ -378,32 +407,41 @@ class _HomeScreenState extends State<HomeScreen>
 
     await _saveData();
 
-    _showMessage('Раздел «$newName» добавлен');
+    _showMessage(
+      'Раздел «$newName» добавлен',
+    );
   }
 
   // ==========================================================
   // RENAME CATEGORY
   // ==========================================================
 
-  Future<void> _renameCategory(String category) async {
+  Future<void> _renameCategory(
+    String category,
+  ) async {
     if (category == 'Все') {
       return;
     }
 
-    final controller = TextEditingController(
+    final controller =
+        TextEditingController(
       text: category,
     );
 
-    final newName = await showDialog<String>(
+    final newName =
+        await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Переименовать раздел'),
+          title: const Text(
+            'Переименовать раздел',
+          ),
 
           content: TextField(
             controller: controller,
             autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
+            textCapitalization:
+                TextCapitalization.sentences,
           ),
 
           actions: [
@@ -416,10 +454,14 @@ class _HomeScreenState extends State<HomeScreen>
 
             FilledButton(
               onPressed: () {
-                final value = controller.text.trim();
+                final value =
+                    controller.text.trim();
 
                 if (value.isNotEmpty) {
-                  Navigator.pop(context, value);
+                  Navigator.pop(
+                    context,
+                    value,
+                  );
                 }
               },
               child: const Text('Сохранить'),
@@ -440,12 +482,15 @@ class _HomeScreenState extends State<HomeScreen>
     final trimmed = newName.trim();
 
     if (_categories.contains(trimmed)) {
-      _showMessage('Такой раздел уже существует');
+      _showMessage(
+        'Такой раздел уже существует',
+      );
       return;
     }
 
     setState(() {
-      final index = _categories.indexOf(category);
+      final index =
+          _categories.indexOf(category);
 
       if (index != -1) {
         _categories[index] = trimmed;
@@ -464,7 +509,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
 
-    final selectedIndex = _categories.indexOf(trimmed);
+    final selectedIndex =
+        _categories.indexOf(trimmed);
 
     _recreateTabController(
       selectedIndex: selectedIndex,
@@ -472,27 +518,37 @@ class _HomeScreenState extends State<HomeScreen>
 
     await _saveData();
 
-    _showMessage('Раздел переименован');
+    _showMessage(
+      'Раздел переименован',
+    );
   }
 
   // ==========================================================
   // DELETE CATEGORY
   // ==========================================================
 
-  Future<void> _deleteCategory(String category) async {
+  Future<void> _deleteCategory(
+    String category,
+  ) async {
     if (category == 'Все') {
       return;
     }
 
-    final notesCount = _notes
-        .where((n) => n.category == category)
-        .length;
+    final notesCount =
+        _notes
+            .where(
+              (n) => n.category == category,
+            )
+            .length;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Удалить раздел?'),
+          title: const Text(
+            'Удалить раздел?',
+          ),
 
           content: Text(
             notesCount == 0
@@ -506,17 +562,25 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context, false);
+                Navigator.pop(
+                  context,
+                  false,
+                );
               },
               child: const Text('Отмена'),
             ),
 
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
-                Navigator.pop(context, true);
+                Navigator.pop(
+                  context,
+                  true,
+                );
               },
               child: const Text('Удалить'),
             ),
@@ -529,35 +593,35 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    String? targetCategory;
+    String targetCategory = 'Личное';
 
     for (final c in _categories) {
-      if (c != 'Все' && c != category) {
+      if (c != 'Все' &&
+          c != category) {
         targetCategory = c;
         break;
       }
     }
-
-    targetCategory ??= 'Личное';
 
     setState(() {
       _categories.remove(category);
 
       for (final note in _notes) {
         if (note.category == category) {
-          note.category = targetCategory!;
+          note.category = targetCategory;
         }
       }
 
       for (final note in _trash) {
         if (note.category == category) {
-          note.category = targetCategory!;
+          note.category = targetCategory;
         }
       }
     });
 
     final selectedIndex =
-        (_tabController?.index ?? 0).clamp(
+        (_tabController?.index ?? 0)
+            .clamp(
       0,
       _categories.length - 1,
     );
@@ -568,7 +632,9 @@ class _HomeScreenState extends State<HomeScreen>
 
     await _saveData();
 
-    _showMessage('Раздел удалён');
+    _showMessage(
+      'Раздел удалён',
+    );
   }
 
   // ==========================================================
@@ -581,62 +647,91 @@ class _HomeScreenState extends State<HomeScreen>
       isScrollControlled: true,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, modalSetState) {
+          builder:
+              (context, modalSetState) {
             return SafeArea(
               child: SizedBox(
                 height:
-                    MediaQuery.of(context).size.height * 0.75,
+                    MediaQuery.of(context)
+                            .size
+                            .height *
+                        0.75,
                 child: Column(
                   children: [
                     const Padding(
-                      padding: EdgeInsets.all(16),
+                      padding:
+                          EdgeInsets.all(16),
                       child: Text(
                         'Разделы',
-                        style: TextStyle(
+                        style:
+                            TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ),
 
                     const Text(
-                      'Удерживайте раздел и перетащите его',
-                      style: TextStyle(
-                        color: Colors.white54,
+                      'Удерживайте раздел '
+                      'и перетащите его',
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.white54,
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(
+                      height: 8,
+                    ),
 
                     Expanded(
-                      child: ReorderableListView.builder(
-                        padding: const EdgeInsets.all(12),
+                      child:
+                          ReorderableListView
+                              .builder(
+                        padding:
+                            const EdgeInsets
+                                .all(12),
 
                         itemCount:
-                            _categories.length - 1,
+                            _categories.length -
+                                1,
 
                         onReorder:
-                            (oldIndex, newIndex) async {
-                          if (oldIndex < newIndex) {
+                            (
+                          oldIndex,
+                          newIndex,
+                        ) async {
+                          if (oldIndex <
+                              newIndex) {
                             newIndex--;
                           }
 
-                          final fromIndex = oldIndex + 1;
-                          final toIndex = newIndex + 1;
+                          final fromIndex =
+                              oldIndex + 1;
+
+                          final toIndex =
+                              newIndex + 1;
 
                           final currentIndex =
-                              (_tabController?.index ?? 0)
+                              (_tabController
+                                          ?.index ??
+                                      0)
                                   .clamp(
                             0,
-                            _categories.length - 1,
+                            _categories.length -
+                                1,
                           );
 
                           final selectedCategory =
-                              _categories[currentIndex];
+                              _categories[
+                                  currentIndex];
 
                           setState(() {
                             final item =
-                                _categories.removeAt(
+                                _categories
+                                    .removeAt(
                               fromIndex,
                             );
 
@@ -646,11 +741,14 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                           });
 
-                          modalSetState(() {});
+                          modalSetState(
+                            () {},
+                          );
 
                           _recreateTabController(
                             selectedIndex:
-                                _categories.indexOf(
+                                _categories
+                                    .indexOf(
                               selectedCategory,
                             ),
                           );
@@ -658,12 +756,14 @@ class _HomeScreenState extends State<HomeScreen>
                           await _saveData();
                         },
 
-                        itemBuilder: (
+                        itemBuilder:
+                            (
                           context,
                           index,
                         ) {
                           final category =
-                              _categories[index + 1];
+                              _categories[
+                                  index + 1];
 
                           return Card(
                             key: ValueKey(
@@ -671,23 +771,32 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
 
                             child: ListTile(
-                              leading: const Icon(
-                                Icons.drag_handle,
+                              leading:
+                                  const Icon(
+                                Icons
+                                    .drag_handle,
                               ),
 
-                              title: Text(category),
+                              title:
+                                  Text(
+                                category,
+                              ),
 
-                              trailing: Row(
+                              trailing:
+                                  Row(
                                 mainAxisSize:
-                                    MainAxisSize.min,
+                                    MainAxisSize
+                                        .min,
                                 children: [
                                   IconButton(
                                     tooltip:
                                         'Переименовать',
-                                    icon: const Icon(
+                                    icon:
+                                        const Icon(
                                       Icons.edit,
                                     ),
-                                    onPressed: () async {
+                                    onPressed:
+                                        () async {
                                       Navigator.pop(
                                         context,
                                       );
@@ -699,13 +808,18 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
 
                                   IconButton(
-                                    tooltip: 'Удалить',
-                                    icon: const Icon(
-                                      Icons.delete_outline,
+                                    tooltip:
+                                        'Удалить',
+                                    icon:
+                                        const Icon(
+                                      Icons
+                                          .delete_outline,
                                       color:
-                                          Colors.redAccent,
+                                          Colors
+                                              .redAccent,
                                     ),
-                                    onPressed: () async {
+                                    onPressed:
+                                        () async {
                                       Navigator.pop(
                                         context,
                                       );
@@ -724,17 +838,28 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding:
+                          const EdgeInsets
+                              .all(16),
                       child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(context);
+                        width:
+                            double.infinity,
+                        child:
+                            FilledButton.icon(
+                          onPressed:
+                              () async {
+                            Navigator.pop(
+                              context,
+                            );
 
                             await _addCategory();
                           },
-                          icon: const Icon(Icons.add),
-                          label: const Text(
+                          icon:
+                              const Icon(
+                            Icons.add,
+                          ),
+                          label:
+                              const Text(
                             'Добавить раздел',
                           ),
                         ),
@@ -754,14 +879,19 @@ class _HomeScreenState extends State<HomeScreen>
   // EDIT NOTE
   // ==========================================================
 
-  Future<void> _editNote(Note note) async {
-    final result = await Navigator.push(
+  Future<void> _editNote(
+    Note note,
+  ) async {
+    final result =
+        await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EditorScreen(
+        builder: (context) =>
+            EditorScreen(
           note: note,
           categories: _categories,
-          initialCategory: note.category,
+          initialCategory:
+              note.category,
         ),
       ),
     );
@@ -770,10 +900,12 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    await _applyEditorResult(
-      note,
-      Map<String, dynamic>.from(result),
-    );
+    if (result is Map<String, dynamic>) {
+      await _applyEditorResult(
+        note,
+        result,
+      );
+    }
   }
 
   // ==========================================================
@@ -781,22 +913,27 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   Future<void> _addNote() async {
-    final currentIndex = _tabController?.index ?? 0;
+    final currentIndex =
+        _tabController?.index ?? 0;
 
     final defaultCategory =
         currentIndex > 0 &&
-                currentIndex < _categories.length
+                currentIndex <
+                    _categories.length
             ? _categories[currentIndex]
             : (_categories.length > 1
                 ? _categories[1]
                 : 'Личное');
 
-    final result = await Navigator.push(
+    final result =
+        await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EditorScreen(
+        builder: (context) =>
+            EditorScreen(
           categories: _categories,
-          initialCategory: defaultCategory,
+          initialCategory:
+              defaultCategory,
         ),
       ),
     );
@@ -805,21 +942,24 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final map = Map<String, dynamic>.from(result);
+    if (result is! Map<String, dynamic>) {
+      return;
+    }
 
     final note = Note(
       id: DateTime.now()
           .microsecondsSinceEpoch
           .toString(),
 
-      title: map['title']?.toString() ?? '',
+      title:
+          result['title']?.toString() ?? '',
 
       contentJson:
-          map['contentJson']?.toString() ??
+          result['contentJson']?.toString() ??
               '[{"insert":"\\n"}]',
 
       category:
-          map['category']?.toString() ??
+          result['category']?.toString() ??
               defaultCategory,
     );
 
@@ -838,7 +978,8 @@ class _HomeScreenState extends State<HomeScreen>
     Note note,
     Map<String, dynamic> result,
   ) async {
-    final index = _notes.indexWhere(
+    final index =
+        _notes.indexWhere(
       (n) => n.id == note.id,
     );
 
@@ -872,12 +1013,17 @@ class _HomeScreenState extends State<HomeScreen>
   // DELETE NOTE
   // ==========================================================
 
-  Future<void> _deleteNote(Note note) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _deleteNote(
+    Note note,
+  ) async {
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Удалить заметку?'),
+          title: const Text(
+            'Удалить заметку?',
+          ),
 
           content: Text(
             note.title.isEmpty
@@ -888,19 +1034,31 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context, false);
+                Navigator.pop(
+                  context,
+                  false,
+                );
               },
-              child: const Text('Отмена'),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
-                Navigator.pop(context, true);
+                Navigator.pop(
+                  context,
+                  true,
+                );
               },
-              child: const Text('В корзину'),
+              child: const Text(
+                'В корзину',
+              ),
             ),
           ],
         );
@@ -945,22 +1103,31 @@ class _HomeScreenState extends State<HomeScreen>
         return SafeArea(
           child: SizedBox(
             height:
-                MediaQuery.of(context).size.height * 0.8,
+                MediaQuery.of(context)
+                        .size
+                        .height *
+                    0.8,
+
             child: Column(
               children: [
                 const Padding(
-                  padding: EdgeInsets.all(16),
+                  padding:
+                      EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline),
-
-                      SizedBox(width: 10),
-
+                      Icon(
+                        Icons.delete_outline,
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
                       Text(
                         'Корзина',
-                        style: TextStyle(
+                        style:
+                            TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
                     ],
@@ -977,49 +1144,65 @@ class _HomeScreenState extends State<HomeScreen>
                   )
                 else
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: _trash.length,
+                    child:
+                        ListView.builder(
+                      itemCount:
+                          _trash.length,
 
-                      itemBuilder: (
+                      itemBuilder:
+                          (
                         context,
                         index,
                       ) {
-                        final note = _trash[index];
+                        final note =
+                            _trash[index];
 
                         return ListTile(
-                          leading: const Icon(
-                            Icons.description_outlined,
+                          leading:
+                              const Icon(
+                            Icons
+                                .description_outlined,
                           ),
 
-                          title: Text(
+                          title:
+                              Text(
                             note.title.isEmpty
                                 ? 'Без названия'
                                 : note.title,
                             maxLines: 1,
                             overflow:
-                                TextOverflow.ellipsis,
+                                TextOverflow
+                                    .ellipsis,
                           ),
 
-                          subtitle: Text(
+                          subtitle:
+                              Text(
                             note.category,
                           ),
 
-                          trailing: Row(
+                          trailing:
+                              Row(
                             mainAxisSize:
-                                MainAxisSize.min,
+                                MainAxisSize
+                                    .min,
                             children: [
                               IconButton(
                                 tooltip:
                                     'Восстановить',
-                                icon: const Icon(
+
+                                icon:
+                                    const Icon(
                                   Icons.restore,
                                 ),
-                                onPressed: () async {
+
+                                onPressed:
+                                    () async {
                                   await _restoreFromTrash(
                                     note,
                                   );
 
-                                  if (context.mounted) {
+                                  if (context
+                                      .mounted) {
                                     Navigator.pop(
                                       context,
                                     );
@@ -1030,12 +1213,17 @@ class _HomeScreenState extends State<HomeScreen>
                               IconButton(
                                 tooltip:
                                     'Удалить навсегда',
-                                icon: const Icon(
-                                  Icons.delete_forever,
+
+                                icon:
+                                    const Icon(
+                                  Icons
+                                      .delete_forever,
                                   color:
                                       Colors.redAccent,
                                 ),
-                                onPressed: () async {
+
+                                onPressed:
+                                    () async {
                                   await _deleteForever(
                                     note,
                                   );
@@ -1050,34 +1238,49 @@ class _HomeScreenState extends State<HomeScreen>
 
                 if (_trash.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding:
+                        const EdgeInsets.all(
+                      16,
+                    ),
                     child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(
-                          Icons.delete_forever,
+                      width:
+                          double.infinity,
+                      child:
+                          OutlinedButton.icon(
+                        icon:
+                            const Icon(
+                          Icons
+                              .delete_forever,
                         ),
-                        label: const Text(
+
+                        label:
+                            const Text(
                           'Очистить корзину',
                         ),
-                        onPressed: () async {
+
+                        onPressed:
+                            () async {
                           final confirmed =
                               await showDialog<bool>(
                             context: context,
-                            builder: (context) {
+                            builder:
+                                (context) {
                               return AlertDialog(
-                                title: const Text(
+                                title:
+                                    const Text(
                                   'Очистить корзину?',
                                 ),
 
-                                content: const Text(
+                                content:
+                                    const Text(
                                   'Все заметки в корзине '
                                   'будут удалены навсегда.',
                                 ),
 
                                 actions: [
                                   TextButton(
-                                    onPressed: () {
+                                    onPressed:
+                                        () {
                                       Navigator.pop(
                                         context,
                                         false,
@@ -1095,12 +1298,15 @@ class _HomeScreenState extends State<HomeScreen>
                                       backgroundColor:
                                           Colors.red,
                                     ),
-                                    onPressed: () {
+
+                                    onPressed:
+                                        () {
                                       Navigator.pop(
                                         context,
                                         true,
                                       );
                                     },
+
                                     child:
                                         const Text(
                                       'Удалить',
@@ -1119,7 +1325,9 @@ class _HomeScreenState extends State<HomeScreen>
                             await _saveData();
 
                             if (context.mounted) {
-                              Navigator.pop(context);
+                              Navigator.pop(
+                                context,
+                              );
                             }
                           }
                         },
@@ -1138,13 +1346,17 @@ class _HomeScreenState extends State<HomeScreen>
   // RESTORE
   // ==========================================================
 
-  Future<void> _restoreFromTrash(Note note) async {
+  Future<void> _restoreFromTrash(
+    Note note,
+  ) async {
     setState(() {
       _trash.removeWhere(
         (n) => n.id == note.id,
       );
 
-      if (!_categories.contains(note.category)) {
+      if (!_categories.contains(
+        note.category,
+      )) {
         note.category =
             _categories.length > 1
                 ? _categories[1]
@@ -1167,8 +1379,11 @@ class _HomeScreenState extends State<HomeScreen>
   // DELETE FOREVER
   // ==========================================================
 
-  Future<void> _deleteForever(Note note) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _deleteForever(
+    Note note,
+  ) async {
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -1185,19 +1400,31 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context, false);
+                Navigator.pop(
+                  context,
+                  false,
+                );
               },
-              child: const Text('Отмена'),
+              child: const Text(
+                'Отмена',
+              ),
             ),
 
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
+              style:
+                  FilledButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
               ),
               onPressed: () {
-                Navigator.pop(context, true);
+                Navigator.pop(
+                  context,
+                  true,
+                );
               },
-              child: const Text('Удалить'),
+              child: const Text(
+                'Удалить',
+              ),
             ),
           ],
         );
@@ -1235,7 +1462,8 @@ class _HomeScreenState extends State<HomeScreen>
             ? List<Note>.from(_notes)
             : _notes
                 .where(
-                  (n) => n.category == category,
+                  (n) =>
+                      n.category == category,
                 )
                 .toList();
 
@@ -1246,10 +1474,12 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (newIndex < 0 ||
         newIndex >= visibleNotes.length) {
-      newIndex = visibleNotes.length - 1;
+      newIndex =
+          visibleNotes.length - 1;
     }
 
-    final moved = visibleNotes.removeAt(oldIndex);
+    final moved =
+        visibleNotes.removeAt(oldIndex);
 
     visibleNotes.insert(
       newIndex,
@@ -1262,9 +1492,14 @@ class _HomeScreenState extends State<HomeScreen>
       } else {
         int visibleIndex = 0;
 
-        for (int i = 0; i < _notes.length; i++) {
-          if (_notes[i].category == category) {
-            _notes[i] = visibleNotes[visibleIndex];
+        for (int i = 0;
+            i < _notes.length;
+            i++) {
+          if (_notes[i].category ==
+              category) {
+            _notes[i] =
+                visibleNotes[visibleIndex];
+
             visibleIndex++;
           }
         }
@@ -1278,7 +1513,9 @@ class _HomeScreenState extends State<HomeScreen>
   // MESSAGE
   // ==========================================================
 
-  void _showMessage(String text) {
+  void _showMessage(
+    String text,
+  ) {
     if (!mounted) {
       return;
     }
@@ -1299,25 +1536,29 @@ class _HomeScreenState extends State<HomeScreen>
   // ==========================================================
 
   @override
-  Widget build(BuildContext context) {
-    if (_loading || _tabController == null) {
+  Widget build(
+    BuildContext context,
+  ) {
+    if (_loading ||
+        _tabController == null) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child:
+              CircularProgressIndicator(),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Мой Блокнот',
-        ),
+        title:
+            const Text('Мой Блокнот'),
 
         actions: [
           IconButton(
             tooltip: 'Корзина',
-            icon: const Icon(
+            icon:
+                const Icon(
               Icons.delete_outline,
             ),
             onPressed: _showTrash,
@@ -1325,35 +1566,47 @@ class _HomeScreenState extends State<HomeScreen>
 
           IconButton(
             tooltip: 'Разделы',
-            icon: const Icon(
+            icon:
+                const Icon(
               Icons.folder_open,
             ),
-            onPressed: _manageCategories,
+            onPressed:
+                _manageCategories,
           ),
         ],
 
-        bottom: TabBar(
-          controller: _tabController,
+        bottom:
+            TabBar(
+          controller:
+              _tabController,
+
           isScrollable: true,
 
-          tabs: _categories
-              .map(
-                (category) => Tab(
-                  text: category,
-                ),
-              )
-              .toList(),
+          tabs:
+              _categories
+                  .map(
+                    (category) =>
+                        Tab(
+                      text: category,
+                    ),
+                  )
+                  .toList(),
         ),
       ),
 
-      body: TabBarView(
-        controller: _tabController!,
+      body:
+          TabBarView(
+        controller:
+            _tabController!,
 
-        children: _categories.map(
+        children:
+            _categories.map(
           (category) {
             final filteredNotes =
                 category == 'Все'
-                    ? List<Note>.from(_notes)
+                    ? List<Note>.from(
+                        _notes,
+                      )
                     : _notes
                         .where(
                           (n) =>
@@ -1366,19 +1619,25 @@ class _HomeScreenState extends State<HomeScreen>
               return Center(
                 child: Text(
                   'Здесь пока пусто',
-                  style: TextStyle(
+                  style:
+                      TextStyle(
                     color:
-                        Colors.white.withOpacity(0.54),
+                        Colors.white.withOpacity(
+                      0.54,
+                    ),
                   ),
                 ),
               );
             }
 
             return Padding(
-              padding: const EdgeInsets.all(8),
+              padding:
+                  const EdgeInsets.all(8),
 
-              child: ReorderableGridView.builder(
-                padding: const EdgeInsets.only(
+              child:
+                  ReorderableGridView.builder(
+                padding:
+                    const EdgeInsets.only(
                   bottom: 90,
                 ),
 
@@ -1390,14 +1649,16 @@ class _HomeScreenState extends State<HomeScreen>
                   childAspectRatio: 1.1,
                 ),
 
-                itemCount: filteredNotes.length,
+                itemCount:
+                    filteredNotes.length,
 
                 dragStartDelay:
                     const Duration(
                   milliseconds: 450,
                 ),
 
-                onReorder: (
+                onReorder:
+                    (
                   oldIndex,
                   newIndex,
                 ) {
@@ -1408,7 +1669,8 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 },
 
-                itemBuilder: (
+                itemBuilder:
+                    (
                   context,
                   index,
                 ) {
@@ -1416,30 +1678,42 @@ class _HomeScreenState extends State<HomeScreen>
                       filteredNotes[index];
 
                   return Card(
-                    key: ValueKey(note.id),
+                    key:
+                        ValueKey(note.id),
 
-                    child: InkWell(
+                    child:
+                        InkWell(
                       borderRadius:
-                          BorderRadius.circular(12),
+                          BorderRadius.circular(
+                        12,
+                      ),
 
-                      onTap: () => _editNote(note),
+                      onTap: () =>
+                          _editNote(note),
 
-                      child: Padding(
+                      child:
+                          Padding(
                         padding:
-                            const EdgeInsets.all(12),
+                            const EdgeInsets.all(
+                          12,
+                        ),
 
-                        child: Column(
+                        child:
+                            Column(
                           crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
 
                           children: [
                             Row(
                               crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  CrossAxisAlignment
+                                      .start,
 
                               children: [
                                 Expanded(
-                                  child: Text(
+                                  child:
+                                      Text(
                                     note.title.isEmpty
                                         ? 'Без названия'
                                         : note.title,
@@ -1448,7 +1722,8 @@ class _HomeScreenState extends State<HomeScreen>
                                         const TextStyle(
                                       fontWeight:
                                           FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize:
+                                          16,
                                     ),
 
                                     maxLines: 2,
@@ -1459,17 +1734,21 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
 
-                                PopupMenuButton<String>(
+                                PopupMenuButton<
+                                    String>(
                                   padding:
                                       EdgeInsets.zero,
 
-                                  icon: const Icon(
+                                  icon:
+                                      const Icon(
                                     Icons.more_vert,
                                     size: 20,
                                   ),
 
                                   onSelected:
-                                      (value) async {
+                                      (
+                                    value,
+                                  ) async {
                                     if (value ==
                                         'delete') {
                                       await _deleteNote(
@@ -1479,12 +1758,16 @@ class _HomeScreenState extends State<HomeScreen>
                                   },
 
                                   itemBuilder:
-                                      (context) =>
-                                          const [
+                                      (
+                                    context,
+                                  ) =>
+                                      const [
                                     PopupMenuItem(
-                                      value: 'delete',
+                                      value:
+                                          'delete',
 
-                                      child: Row(
+                                      child:
+                                          Row(
                                         children: [
                                           Icon(
                                             Icons
@@ -1492,11 +1775,10 @@ class _HomeScreenState extends State<HomeScreen>
                                             color:
                                                 Colors.red,
                                           ),
-
                                           SizedBox(
-                                            width: 8,
+                                            width:
+                                                8,
                                           ),
-
                                           Text(
                                             'В корзину',
                                           ),
@@ -1520,15 +1802,18 @@ class _HomeScreenState extends State<HomeScreen>
 
                               decoration:
                                   BoxDecoration(
-                                color: Colors.white10,
+                                color:
+                                    Colors.white10,
                                 borderRadius:
                                     BorderRadius
-                                        .circular(4),
+                                        .circular(
+                                  4,
+                                ),
                               ),
 
-                              child: Text(
+                              child:
+                                  Text(
                                 note.category,
-
                                 style:
                                     const TextStyle(
                                   fontSize: 10,
@@ -1552,7 +1837,11 @@ class _HomeScreenState extends State<HomeScreen>
       floatingActionButton:
           FloatingActionButton(
         onPressed: _addNote,
-        child: const Icon(Icons.add),
+
+        child:
+            const Icon(
+          Icons.add,
+        ),
       ),
     );
   }
@@ -1597,11 +1886,15 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState
     extends State<EditorScreen> {
-  late final TextEditingController _titleController;
+  final TextEditingController
+      _titleController =
+      TextEditingController();
 
-  late final FocusNode _focusNode;
+  final FocusNode _focusNode =
+      FocusNode();
 
-  late FleatherController _controller;
+  late FleatherController
+      _controller;
 
   late String _selectedCategory;
 
@@ -1615,13 +1908,6 @@ class _EditorScreenState
   void initState() {
     super.initState();
 
-    _titleController =
-        TextEditingController(
-      text: widget.note?.title ?? '',
-    );
-
-    _focusNode = FocusNode();
-
     _selectedCategory =
         _getInitialCategory();
 
@@ -1630,23 +1916,27 @@ class _EditorScreenState
   }
 
   // ==========================================================
-  // CATEGORY
+  // INITIAL CATEGORY
   // ==========================================================
 
   String _getInitialCategory() {
+    if (widget.note != null) {
+      _titleController.text =
+          widget.note!.title;
+
+      if (widget.categories.contains(
+        widget.note!.category,
+      )) {
+        return widget.note!.category;
+      }
+    }
+
     final available =
         widget.categories
             .where(
               (c) => c != 'Все',
             )
             .toList();
-
-    if (widget.note != null &&
-        available.contains(
-          widget.note!.category,
-        )) {
-      return widget.note!.category;
-    }
 
     if (widget.initialCategory != null &&
         available.contains(
@@ -1669,16 +1959,14 @@ class _EditorScreenState
   // ==========================================================
   // FLEATHER HEURISTICS
   //
-  // ВАЖНО:
-  //
-  // Здесь НЕ убираем:
+  // Здесь специально НЕ удаляем:
   //
   // PreserveInlineStylesRule
-  // PreserveLineStyleOnSplitRule
   // PreserveLineFormatOnNewLineRule
+  // PreserveLineStyleOnSplitRule
   //
-  // Именно стандартные правила Fleather отвечают
-  // за корректное продолжение форматирования.
+  // Это штатные правила Fleather для нормального
+  // поведения форматирования и переноса строки.
   // ==========================================================
 
   ParchmentHeuristics _editorHeuristics() {
@@ -1716,13 +2004,12 @@ class _EditorScreenState
           );
 
           return FleatherController(
-            document:
-                document,
+            document: document,
           );
         }
       } catch (_) {
         // Если старый JSON повреждён,
-        // создаём пустой документ.
+        // создаём пустой документ ниже.
       }
     }
 
@@ -1732,22 +2019,30 @@ class _EditorScreenState
 
     final document =
         ParchmentDocument(
-      heuristics:
-          heuristics,
+      heuristics: heuristics,
     );
 
     return FleatherController(
-      document:
-          document,
+      document: document,
     );
   }
 
   // ==========================================================
-  // GET CONTENT JSON
+  // CONTENT JSON
   //
-  // НИЧЕГО НЕ УДАЛЯЕМ ИЗ ATTRIBUTES.
+  // НИЧЕГО НЕ ЧИСТИМ.
   //
-  // Это принципиально важно.
+  // Fleather сам отвечает за:
+  // - жирный;
+  // - курсив;
+  // - подчёркивание;
+  // - зачёркивание;
+  // - цвет;
+  // - фон;
+  // - списки;
+  // - заголовки;
+  // - перенос строки;
+  // - наследование форматирования.
   // ==========================================================
 
   String _getContentJson() {
@@ -1933,6 +2228,11 @@ class _EditorScreenState
     return FleatherToolbar.basic(
       controller:
           _controller,
+
+      // Отступы здесь не убираем из документа.
+      // Просто не показываем отдельную кнопку
+      // управления отступом.
+      hideIndentation: true,
     );
   }
 
@@ -1988,7 +2288,7 @@ class _EditorScreenState
 
           actions: [
             // ------------------------------------------------
-            // SAVE TXT
+            // TXT
             // ------------------------------------------------
 
             IconButton(
@@ -2006,7 +2306,7 @@ class _EditorScreenState
             ),
 
             // ------------------------------------------------
-            // SAVE NOTE
+            // SAVE
             // ------------------------------------------------
 
             IconButton(
@@ -2029,9 +2329,9 @@ class _EditorScreenState
           child:
               Column(
             children: [
-              // ----------------------------------------------
+              // =================================================
               // CATEGORY
-              // ----------------------------------------------
+              // =================================================
 
               Padding(
                 padding:
@@ -2130,9 +2430,9 @@ class _EditorScreenState
                 height: 1,
               ),
 
-              // ----------------------------------------------
+              // =================================================
               // TOOLBAR
-              // ----------------------------------------------
+              // =================================================
 
               SingleChildScrollView(
                 scrollDirection:
@@ -2146,9 +2446,9 @@ class _EditorScreenState
                 height: 1,
               ),
 
-              // ----------------------------------------------
+              // =================================================
               // EDITOR
-              // ----------------------------------------------
+              // =================================================
 
               Expanded(
                 child:
