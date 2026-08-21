@@ -1174,62 +1174,107 @@ Future<void> _editNote(
   // ==========================================================
 
   Future<void> _addNote() async {
-    final currentIndex =
-        _tabController?.index ?? 0;
+  final currentIndex =
+      _tabController?.index ?? 0;
 
-    final defaultCategory =
-        currentIndex > 0 &&
-                currentIndex <
-                    _categories.length
-            ? _categories[
-                currentIndex]
-            : (_categories.length >
-                    1
-                ? _categories[1]
-                : 'Личное');
+  final defaultCategory =
+      currentIndex > 0 &&
+              currentIndex < _categories.length
+          ? _categories[currentIndex]
+          : (_categories.length > 1
+              ? _categories[1]
+              : 'Личное');
 
-    final result =
-        await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            EditorScreen(
-          categories:
-              _categories,
-          initialCategory:
-              defaultCategory,
-        ),
+  debugPrint('');
+  debugPrint('========================================');
+  debugPrint('ADD NOTE: OPENING EDITOR');
+  debugPrint('DEFAULT CATEGORY: $defaultCategory');
+  debugPrint('========================================');
+
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditorScreen(
+        categories: _categories,
+        initialCategory: defaultCategory,
+      ),
+    ),
+  );
+
+  debugPrint('');
+  debugPrint('========================================');
+  debugPrint('ADD NOTE: RETURNED FROM EDITOR');
+  debugPrint('RESULT: $result');
+  debugPrint('RESULT TYPE: ${result.runtimeType}');
+  debugPrint('========================================');
+
+  if (result == null) {
+    debugPrint('ADD NOTE: RESULT IS NULL');
+    return;
+  }
+
+  final title =
+      result['title']?.toString() ?? '';
+
+  final contentJson =
+      result['contentJson']?.toString() ?? '';
+
+  final category =
+      result['category']?.toString() ??
+          defaultCategory;
+
+  debugPrint('');
+  debugPrint('----------------------------------------');
+  debugPrint('ADD NOTE: RECEIVED DATA');
+  debugPrint('TITLE: $title');
+  debugPrint('CONTENT LENGTH: ${contentJson.length}');
+  debugPrint('CONTENT JSON: $contentJson');
+  debugPrint('CATEGORY: $category');
+  debugPrint('----------------------------------------');
+
+  setState(() {
+    _notes.add(
+      Note(
+        id: DateTime.now()
+            .microsecondsSinceEpoch
+            .toString(),
+        title: title,
+        contentJson: contentJson.isEmpty
+            ? '[{"insert":"\\n"}]'
+            : contentJson,
+        category: category,
       ),
     );
+  });
 
-    if (result == null) {
-      return;
-    }
+  debugPrint('');
+  debugPrint('========================================');
+  debugPrint('ADD NOTE: NOTE ADDED TO _notes');
+  debugPrint('NOTES COUNT: ${_notes.length}');
 
-    setState(() {
-      _notes.add(
-        Note(
-          id: DateTime.now()
-              .microsecondsSinceEpoch
-              .toString(),
+  if (_notes.isNotEmpty) {
+    final lastNote = _notes.last;
 
-          title:
-              result['title'] ??
-                  '',
-
-          contentJson:
-              result['contentJson'] ??
-                  '[{"insert":"\\n"}]',
-
-          category:
-              result['category'] ??
-                  defaultCategory,
-        ),
-      );
-    });
-
-    await _saveData();
+    debugPrint('LAST NOTE TITLE: ${lastNote.title}');
+    debugPrint(
+      'LAST NOTE CONTENT LENGTH: '
+      '${lastNote.contentJson.length}',
+    );
+    debugPrint(
+      'LAST NOTE CONTENT: '
+      '${lastNote.contentJson}',
+    );
   }
+
+  debugPrint('========================================');
+
+  await _saveData();
+
+  debugPrint('');
+  debugPrint('========================================');
+  debugPrint('ADD NOTE: _saveData COMPLETED');
+  debugPrint('========================================');
+}
 
   // ==========================================================
   // MESSAGE
