@@ -2919,7 +2919,7 @@ class _EditorScreenState
               },
             ),
 
-            const VerticalDivider(
+             VerticalDivider(
               width: 1,
               indent: 8,
               endIndent: 8,
@@ -2933,7 +2933,7 @@ class _EditorScreenState
                   'Нижний индекс',
               onPressed: () {
                 _format(
-                  const ScriptAttribute(
+                 ScriptAttribute(
                     'sub',
                   ),
                 );
@@ -2948,7 +2948,7 @@ class _EditorScreenState
                   'Верхний индекс',
               onPressed: () {
                 _format(
-                  const ScriptAttribute(
+                  ScriptAttribute(
                     'super',
                   ),
                 );
