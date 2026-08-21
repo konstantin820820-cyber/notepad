@@ -1600,36 +1600,57 @@ class _EditorScreenState
   // EXPORT NOTE TO DEVICE
   // ==========================================================
 
-  Future<void>
-      _saveToDevice() async {
+    // ==========================================================
+  // EXPORT NOTE TO DEVICE
+  // ==========================================================
+
+  Future<void> _saveToDevice() async {
     try {
+      // ------------------------------------------------------
+      // 1. Получаем заголовок
+      // ------------------------------------------------------
+
       final title =
-          _titleController.text
-              .trim();
+          _titleController.text.trim();
 
-      final contentJson =
-          jsonEncode(
-        _controller
-            .document
-            .toDelta()
-            .toJson(),
+      // ------------------------------------------------------
+      // 2. Получаем НАСТОЯЩИЙ текст из Fleather
+      // ------------------------------------------------------
+
+      final plainText =
+          _controller.document.toPlainText();
+
+      // ------------------------------------------------------
+      // 3. Диагностика
+      // ------------------------------------------------------
+
+      debugPrint(
+        '========== EXPORT DIAGNOSTIC ==========',
       );
 
-      final exportData =
-          <String, dynamic>{
-        'title': title,
-        'category':
-            _selectedCategory,
-        'contentJson':
-            contentJson,
-      };
-
-      final jsonText =
-          const JsonEncoder
-              .withIndent('  ')
-              .convert(
-        exportData,
+      debugPrint(
+        'TITLE: $title',
       );
+
+      debugPrint(
+        'PLAIN TEXT LENGTH: ${plainText.length}',
+      );
+
+      debugPrint(
+        'PLAIN TEXT:',
+      );
+
+      debugPrint(
+        plainText,
+      );
+
+      debugPrint(
+        '=======================================',
+      );
+
+      // ------------------------------------------------------
+      // 4. Безопасное имя файла
+      // ------------------------------------------------------
 
       final safeTitle =
           _safeFileName(
@@ -1639,7 +1660,11 @@ class _EditorScreenState
       );
 
       final fileName =
-          '$safeTitle.json';
+          '$safeTitle.txt';
+
+      // ------------------------------------------------------
+      // 5. Создаём временный TXT-файл
+      // ------------------------------------------------------
 
       final tempDirectory =
           Directory.systemTemp;
@@ -1650,11 +1675,19 @@ class _EditorScreenState
         '$fileName',
       );
 
+      // ------------------------------------------------------
+      // 6. Записываем именно текст Fleather
+      // ------------------------------------------------------
+
       await tempFile.writeAsString(
-        jsonText,
+        plainText,
         encoding: utf8,
         flush: true,
       );
+
+      // ------------------------------------------------------
+      // 7. Проверяем файл
+      // ------------------------------------------------------
 
       if (!await tempFile.exists()) {
         throw Exception(
@@ -1662,9 +1695,23 @@ class _EditorScreenState
         );
       }
 
+      final fileLength =
+          await tempFile.length();
+
+      debugPrint(
+        'TEMP FILE: ${tempFile.path}',
+      );
+
+      debugPrint(
+        'TEMP FILE LENGTH: $fileLength',
+      );
+
+      // ------------------------------------------------------
+      // 8. Передаём файл Android
+      // ------------------------------------------------------
+
       final savedPath =
-          await FlutterFileDialog
-              .saveFile(
+          await FlutterFileDialog.saveFile(
         params:
             SaveFileDialogParams(
           sourceFilePath:
@@ -1674,11 +1721,19 @@ class _EditorScreenState
         ),
       );
 
+      // ------------------------------------------------------
+      // 9. Удаляем временный файл
+      // ------------------------------------------------------
+
       try {
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
       } catch (_) {}
+
+      // ------------------------------------------------------
+      // 10. Результат
+      // ------------------------------------------------------
 
       if (!mounted) {
         return;
@@ -1687,14 +1742,30 @@ class _EditorScreenState
       if (savedPath != null &&
           savedPath.isNotEmpty) {
         _showMessage(
-          'Файл сохранён на устройство',
+          'Текст сохранён на устройство',
         );
       } else {
         _showMessage(
           'Сохранение отменено',
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint(
+        '========== EXPORT ERROR ==========',
+      );
+
+      debugPrint(
+        e.toString(),
+      );
+
+      debugPrint(
+        stackTrace.toString(),
+      );
+
+      debugPrint(
+        '==================================',
+      );
+
       if (!mounted) {
         return;
       }
