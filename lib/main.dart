@@ -2019,15 +2019,10 @@ class _NotePreview
 // EDITOR
 // ============================================================
 
-class EditorScreen
-    extends StatefulWidget {
+class EditorScreen extends StatefulWidget {
   final Note? note;
-
-  final List<String>
-      categories;
-
-  final String?
-      initialCategory;
+  final List<String> categories;
+  final String? initialCategory;
 
   const EditorScreen({
     super.key,
@@ -2039,6 +2034,822 @@ class EditorScreen
   @override
   State<EditorScreen> createState() =>
       _EditorScreenState();
+}
+
+// ============================================================
+// EDITOR STATE
+// ============================================================
+
+class _EditorScreenState extends State<EditorScreen> {
+  final TextEditingController _titleController =
+      TextEditingController();
+
+  final FocusNode _focusNode =
+      FocusNode();
+
+  late FleatherController _controller;
+
+  late String _selectedCategory;
+
+  late String _noteId;
+
+  Timer? _autoSaveTimer;
+
+  bool _saving = false;
+
+  bool _hasChanges = false;
+
+  // ==========================================================
+  // INIT
+  // ==========================================================
+
+  @override
+  void initState() {
+    super.initState();
+
+    _noteId =
+        widget.note?.id ??
+        DateTime.now()
+            .microsecondsSinceEpoch
+            .toString();
+
+    _selectedCategory =
+        _getInitialCategory();
+
+    _controller =
+        _createController();
+
+    _controller.addListener(
+      _onEditorChanged,
+    );
+
+    _titleController.addListener(
+      _onTitleChanged,
+    );
+  }
+
+  // ==========================================================
+  // INITIAL CATEGORY
+  // ==========================================================
+
+  String _getInitialCategory() {
+    if (widget.note != null) {
+      _titleController.text =
+          widget.note!.title;
+
+      return widget.note!.category;
+    }
+
+    final available =
+        widget.categories
+            .where(
+              (c) => c != 'Все',
+            )
+            .toList();
+
+    if (widget.initialCategory != null &&
+        available.contains(
+          widget.initialCategory,
+        )) {
+      return widget.initialCategory!;
+    }
+
+    if (available.contains('Личное')) {
+      return 'Личное';
+    }
+
+    if (available.isNotEmpty) {
+      return available.first;
+    }
+
+    return 'Личное';
+  }
+
+  // ==========================================================
+  // CREATE CONTROLLER
+  // ==========================================================
+
+  FleatherController _createController() {
+    if (widget.note != null &&
+        widget.note!.contentJson
+            .trim()
+            .isNotEmpty) {
+      try {
+        final decoded =
+            jsonDecode(
+          widget.note!.contentJson,
+        );
+
+        if (decoded is List) {
+          final document =
+              ParchmentDocument.fromJson(
+            decoded,
+          );
+
+          return FleatherController(
+            document: document,
+          );
+        }
+      } catch (_) {}
+    }
+
+    return FleatherController();
+  }
+
+  // ==========================================================
+  // EDITOR CHANGED
+  // ==========================================================
+
+  void _onEditorChanged() {
+    _hasChanges = true;
+    _scheduleAutoSave();
+  }
+
+  // ==========================================================
+  // TITLE CHANGED
+  // ==========================================================
+
+  void _onTitleChanged() {
+    _hasChanges = true;
+    _scheduleAutoSave();
+  }
+
+  // ==========================================================
+  // SCHEDULE AUTOSAVE
+  // ==========================================================
+
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+
+    _autoSaveTimer = Timer(
+      const Duration(
+        milliseconds: 700,
+      ),
+      () {
+        _autoSave();
+      },
+    );
+  }
+
+  // ==========================================================
+  // BUILD CURRENT NOTE
+  // ==========================================================
+
+  Note _buildCurrentNote() {
+    final contentJson =
+        jsonEncode(
+      _controller
+          .document
+          .toDelta()
+          .toJson(),
+    );
+
+    return Note(
+      id: _noteId,
+      title:
+          _titleController.text.trim(),
+      contentJson:
+          contentJson,
+      category:
+          _selectedCategory,
+    );
+  }
+
+  // ==========================================================
+  // AUTOSAVE
+  // ==========================================================
+
+  Future<void> _autoSave() async {
+    if (!_hasChanges || _saving) {
+      return;
+    }
+
+    _saving = true;
+
+    try {
+      final prefs =
+          await SharedPreferences
+              .getInstance();
+
+      final note =
+          _buildCurrentNote();
+
+      final notesString =
+          prefs.getString(
+        'local_notes_clean',
+      );
+
+      List<Note> notes = [];
+
+      if (notesString != null &&
+          notesString.isNotEmpty) {
+        try {
+          final decoded =
+              jsonDecode(
+            notesString,
+          );
+
+          if (decoded is List) {
+            notes = decoded
+                .map(
+                  (item) =>
+                      Note.fromMap(
+                    Map<String, dynamic>
+                        .from(item),
+                  ),
+                )
+                .toList();
+          }
+        } catch (_) {}
+      }
+
+      final index =
+          notes.indexWhere(
+        (n) => n.id == _noteId,
+      );
+
+      final hasRealContent =
+          note.title.isNotEmpty ||
+          _controller
+              .document
+              .toPlainText()
+              .trim()
+              .isNotEmpty;
+
+      if (index == -1) {
+        if (hasRealContent) {
+          notes.insert(
+            0,
+            note,
+          );
+        }
+      } else {
+        notes[index] =
+            note;
+      }
+
+      await prefs.setString(
+        'local_notes_clean',
+        jsonEncode(
+          notes
+              .map(
+                (n) => n.toMap(),
+              )
+              .toList(),
+        ),
+      );
+
+      await prefs.setStringList(
+        'local_categories',
+        widget.categories,
+      );
+
+      _hasChanges = false;
+    } catch (_) {
+      // Автосохранение не должно
+      // ломать редактор.
+    } finally {
+      _saving = false;
+    }
+  }
+
+  // ==========================================================
+  // FORCE SAVE BEFORE LEAVING
+  // ==========================================================
+
+  Future<void> _saveBeforeLeaving() async {
+    _autoSaveTimer?.cancel();
+
+    if (_hasChanges) {
+      await _autoSave();
+    }
+  }
+
+  // ==========================================================
+  // RESULT FOR HOME SCREEN
+  // ==========================================================
+
+  Map<String, dynamic> _getResult() {
+    final note =
+        _buildCurrentNote();
+
+    return {
+      'id': note.id,
+      'title': note.title,
+      'contentJson':
+          note.contentJson,
+      'category':
+          note.category,
+    };
+  }
+
+  // ==========================================================
+  // SAVE NOTE BUTTON
+  // ==========================================================
+
+  Future<void> _saveNote() async {
+    await _saveBeforeLeaving();
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      _getResult(),
+    );
+  }
+
+  // ==========================================================
+  // BACK / SWIPE
+  // ==========================================================
+
+  Future<bool> _handleBack() async {
+    await _saveBeforeLeaving();
+
+    if (!mounted) {
+      return false;
+    }
+
+    Navigator.pop(
+      context,
+      _getResult(),
+    );
+
+    return false;
+  }
+
+  // ==========================================================
+  // EXPORT TXT
+  // ==========================================================
+
+  Future<void> _saveToDevice() async {
+    try {
+      final title =
+          _titleController.text.trim();
+
+      final plainText =
+          _controller
+              .document
+              .toPlainText();
+
+      final safeTitle =
+          _safeFileName(
+        title.isEmpty
+            ? 'untitled_note'
+            : title,
+      );
+
+      final fileName =
+          '$safeTitle.txt';
+
+      final tempDirectory =
+          Directory.systemTemp;
+
+      final tempFile = File(
+        '${tempDirectory.path}/'
+        '${DateTime.now().microsecondsSinceEpoch}_'
+        '$fileName',
+      );
+
+      await tempFile.writeAsString(
+        plainText,
+        encoding: utf8,
+        flush: true,
+      );
+
+      if (!await tempFile.exists()) {
+        throw Exception(
+          'Временный TXT-файл не создан.',
+        );
+      }
+
+      final savedPath =
+          await FlutterFileDialog
+              .saveFile(
+        params:
+            SaveFileDialogParams(
+          sourceFilePath:
+              tempFile.path,
+          fileName:
+              fileName,
+        ),
+      );
+
+      try {
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+
+      if (!mounted) {
+        return;
+      }
+
+      if (savedPath != null &&
+          savedPath.isNotEmpty) {
+        _showMessage(
+          'TXT сохранён на устройство',
+        );
+      } else {
+        _showMessage(
+          'Сохранение отменено',
+        );
+      }
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        'Ошибка сохранения TXT:\n$e',
+      );
+    }
+  }
+
+  // ==========================================================
+  // SAFE FILE NAME
+  // ==========================================================
+
+  String _safeFileName(
+    String value,
+  ) {
+    var result =
+        value.trim();
+
+    if (result.isEmpty) {
+      result =
+          'untitled_note';
+    }
+
+    result =
+        result.replaceAll(
+      RegExp(
+        r'[\\/:*?"<>|]',
+      ),
+      '_',
+    );
+
+    return result;
+  }
+
+  // ==========================================================
+  // CATEGORY
+  // ==========================================================
+
+  void _changeCategory(
+    String? value,
+  ) {
+    if (value == null) {
+      return;
+    }
+
+    setState(() {
+      _selectedCategory =
+          value;
+    });
+
+    _hasChanges = true;
+
+    _scheduleAutoSave();
+  }
+
+  // ==========================================================
+  // MESSAGE
+  // ==========================================================
+
+  void _showMessage(
+    String text,
+  ) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      SnackBar(
+        content:
+            Text(text),
+        duration:
+            const Duration(
+          seconds: 2,
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // TOOLBAR
+  // ==========================================================
+
+  Widget _buildToolbar() {
+    return FleatherToolbar.basic(
+      controller:
+          _controller,
+
+      // Оставляем обычное форматирование,
+      // но убираем функции, которые могут
+      // создавать визуальный отступ/списки.
+      hideIndentation:
+          true,
+
+      hideListNumbers:
+          true,
+
+      hideListBullets:
+          true,
+
+      hideListChecks:
+          true,
+
+      hideCodeBlock:
+          true,
+
+      hideQuote:
+          true,
+
+      hideHeadingStyle:
+          true,
+    );
+  }
+
+  // ==========================================================
+  // BUILD
+  // ==========================================================
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return WillPopScope(
+      onWillPop:
+          _handleBack,
+
+      child: Scaffold(
+        appBar:
+            AppBar(
+          title:
+              TextField(
+            controller:
+                _titleController,
+
+            style:
+                const TextStyle(
+              fontSize: 20,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+
+            decoration:
+                const InputDecoration(
+              hintText:
+                  'Название заметки',
+              border:
+                  InputBorder.none,
+            ),
+
+            textInputAction:
+                TextInputAction.done,
+          ),
+
+          actions: [
+            // ==================================================
+            // TXT
+            // ==================================================
+
+            IconButton(
+              tooltip:
+                  'Сохранить как TXT',
+
+              icon:
+                  const Icon(
+                Icons
+                    .file_download_outlined,
+              ),
+
+              onPressed:
+                  _saveToDevice,
+            ),
+
+            // ==================================================
+            // SAVE
+            // ==================================================
+
+            IconButton(
+              tooltip:
+                  'Сохранить',
+
+              icon:
+                  const Icon(
+                Icons.save,
+              ),
+
+              onPressed:
+                  _saveNote,
+            ),
+          ],
+        ),
+
+        body:
+            SafeArea(
+          child:
+              Column(
+            children: [
+              // =================================================
+              // CATEGORY
+              // =================================================
+
+              Padding(
+                padding:
+                    const EdgeInsets
+                        .fromLTRB(
+                  12,
+                  8,
+                  12,
+                  4,
+                ),
+
+                child:
+                    Row(
+                  children: [
+                    const Icon(
+                      Icons
+                          .folder_outlined,
+                      size: 20,
+                    ),
+
+                    const SizedBox(
+                      width: 8,
+                    ),
+
+                    const Text(
+                      'Раздел:',
+                    ),
+
+                    const SizedBox(
+                      width: 8,
+                    ),
+
+                    Expanded(
+                      child:
+                          DropdownButtonHideUnderline(
+                        child:
+                            DropdownButton<
+                                String>(
+                          value:
+                              widget.categories
+                                      .where(
+                                        (c) =>
+                                            c !=
+                                            'Все',
+                                      )
+                                      .contains(
+                            _selectedCategory,
+                          )
+                                  ? _selectedCategory
+                                  : null,
+
+                          isExpanded:
+                              true,
+
+                          items: widget
+                              .categories
+                              .where(
+                                (category) =>
+                                    category !=
+                                    'Все',
+                              )
+                              .map(
+                                (
+                                  category,
+                                ) =>
+                                    DropdownMenuItem<
+                                        String>(
+                                  value:
+                                      category,
+
+                                  child:
+                                      Text(
+                                    category,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+
+                          onChanged:
+                              _changeCategory,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(
+                height: 1,
+              ),
+
+              // =================================================
+              // TOOLBAR
+              // =================================================
+
+              SingleChildScrollView(
+                scrollDirection:
+                    Axis.horizontal,
+
+                child:
+                    _buildToolbar(),
+              ),
+
+              const Divider(
+                height: 1,
+              ),
+
+              // =================================================
+              // EDITOR
+              // =================================================
+
+              Expanded(
+                child:
+                    Padding(
+                  padding:
+                      const EdgeInsets
+                          .all(
+                    8,
+                  ),
+
+                  child:
+                      FleatherEditor(
+                    controller:
+                        _controller,
+
+                    focusNode:
+                        _focusNode,
+
+                    padding:
+                        const EdgeInsets
+                            .only(
+                      left: 12,
+                      right: 12,
+                      top: 4,
+                      bottom: 12,
+                    ),
+
+                    expands:
+                        true,
+
+                    autofocus:
+                        false,
+
+                    showCursor:
+                        true,
+
+                    // Обычный Enter остаётся
+                    // обычным переносом строки.
+                    autocorrect:
+                        true,
+
+                    enableSuggestions:
+                        true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // DISPOSE
+  // ==========================================================
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+
+    _controller.removeListener(
+      _onEditorChanged,
+    );
+
+    _titleController.removeListener(
+      _onTitleChanged,
+    );
+
+    _focusNode.dispose();
+
+    _controller.dispose();
+
+    _titleController.dispose();
+
+    super.dispose();
+  }
 }
 
 // ============================================================
