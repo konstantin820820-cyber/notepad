@@ -1,3 +1,13 @@
+name: notepad
+description: A local notes application.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
 dependencies:
   flutter:
     sdk: flutter
@@ -9,3 +19,12 @@ dependencies:
   flutter_quill: ^11.5.1
   reorderable_grid_view: ^2.2.8
   flutter_file_dialog: ^3.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
