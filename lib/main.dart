@@ -26,18 +26,18 @@ class LocalNotesApp extends StatelessWidget {
       title: 'Мой Блокнот',
       debugShowCheckedModeBanner: false,
 
+      locale: const Locale('ru', 'RU'),
+
+      supportedLocales: const [
+        Locale('ru', 'RU'),
+      ],
+
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
         FlutterQuillLocalizations.delegate,
       ],
-
-      supportedLocales: const [
-        Locale('ru', 'RU'),
-      ],
-
-      locale: const Locale('ru', 'RU'),
 
       theme: ThemeData(
         useMaterial3: true,
@@ -168,9 +168,7 @@ class _HomeScreenState extends State<HomeScreen>
         'Покупки',
       ];
     } else {
-      categories = List<String>.from(
-        savedCategories,
-      );
+      categories = List<String>.from(savedCategories);
 
       categories.removeWhere(
         (c) => c == 'Все',
@@ -310,18 +308,14 @@ class _HomeScreenState extends State<HomeScreen>
     await prefs.setString(
       _notesKey,
       jsonEncode(
-        _notes
-            .map((note) => note.toMap())
-            .toList(),
+        _notes.map((note) => note.toMap()).toList(),
       ),
     );
 
     await prefs.setString(
       _trashKey,
       jsonEncode(
-        _trash
-            .map((note) => note.toMap())
-            .toList(),
+        _trash.map((note) => note.toMap()).toList(),
       ),
     );
   }
@@ -339,11 +333,9 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title:
-              const Text('Новый раздел'),
+          title: const Text('Новый раздел'),
 
-          content:
-              TextField(
+          content: TextField(
             controller: controller,
             autofocus: true,
             textCapitalization:
@@ -360,8 +352,7 @@ class _HomeScreenState extends State<HomeScreen>
               onPressed: () {
                 Navigator.pop(context);
               },
-              child:
-                  const Text('Отмена'),
+              child: const Text('Отмена'),
             ),
 
             FilledButton(
@@ -376,8 +367,7 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }
               },
-              child:
-                  const Text('Добавить'),
+              child: const Text('Добавить'),
             ),
           ],
         );
@@ -440,13 +430,11 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title:
-              const Text(
+          title: const Text(
             'Переименовать раздел',
           ),
 
-          content:
-              TextField(
+          content: TextField(
             controller: controller,
             autofocus: true,
             textCapitalization:
@@ -458,8 +446,7 @@ class _HomeScreenState extends State<HomeScreen>
               onPressed: () {
                 Navigator.pop(context);
               },
-              child:
-                  const Text('Отмена'),
+              child: const Text('Отмена'),
             ),
 
             FilledButton(
@@ -474,8 +461,7 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 }
               },
-              child:
-                  const Text('Сохранить'),
+              child: const Text('Сохранить'),
             ),
           ],
         );
@@ -511,13 +497,15 @@ class _HomeScreenState extends State<HomeScreen>
 
       for (final note in _notes) {
         if (note.category == category) {
-          note.category = trimmed;
+          note.category =
+              trimmed;
         }
       }
 
       for (final note in _trash) {
         if (note.category == category) {
-          note.category = trimmed;
+          note.category =
+              trimmed;
         }
       }
     });
@@ -562,13 +550,11 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title:
-              const Text(
+          title: const Text(
             'Удалить раздел?',
           ),
 
-          content:
-              Text(
+          content: Text(
             notesCount == 0
                 ? 'Раздел «$category» пуст.'
                 : 'В разделе «$category» находится '
@@ -585,8 +571,7 @@ class _HomeScreenState extends State<HomeScreen>
                   false,
                 );
               },
-              child:
-                  const Text('Отмена'),
+              child: const Text('Отмена'),
             ),
 
             FilledButton(
@@ -601,8 +586,7 @@ class _HomeScreenState extends State<HomeScreen>
                   true,
                 );
               },
-              child:
-                  const Text('Удалить'),
+              child: const Text('Удалить'),
             ),
           ],
         );
@@ -675,22 +659,19 @@ class _HomeScreenState extends State<HomeScreen>
           builder:
               (context, modalSetState) {
             return SafeArea(
-              child:
-                  SizedBox(
+              child: SizedBox(
                 height:
                     MediaQuery.of(context)
                             .size
                             .height *
                         0.75,
 
-                child:
-                    Column(
+                child: Column(
                   children: [
                     const Padding(
                       padding:
                           EdgeInsets.all(16),
-                      child:
-                          Text(
+                      child: Text(
                         'Разделы',
                         style:
                             TextStyle(
@@ -791,8 +772,7 @@ class _HomeScreenState extends State<HomeScreen>
                               'category_$category',
                             ),
 
-                            child:
-                                ListTile(
+                            child: ListTile(
                               leading:
                                   const Icon(
                                 Icons
@@ -1968,8 +1948,7 @@ class _EditorScreenState
       _titleController.text =
           widget.note!.title;
 
-      if (widget.categories
-          .contains(
+      if (widget.categories.contains(
         widget.note!.category,
       )) {
         return widget.note!.category;
@@ -1983,8 +1962,7 @@ class _EditorScreenState
             )
             .toList();
 
-    if (widget.initialCategory !=
-            null &&
+    if (widget.initialCategory != null &&
         available.contains(
           widget.initialCategory,
         )) {
@@ -2034,17 +2012,11 @@ class _EditorScreenState
                   document.length - 1,
             ),
 
-            // КЛЮЧЕВОЙ ПАРАМЕТР.
-            //
-            // При Enter стиль текущего текста
-            // сохраняется для новой строки.
-            keepStyleOnNewLine: true,
+            keepStyleOnNewLine:
+                true,
           );
         }
-      } catch (_) {
-        // Если старый JSON повреждён,
-        // создаём пустой документ.
-      }
+      } catch (_) {}
     }
 
     return QuillController(
@@ -2054,7 +2026,8 @@ class _EditorScreenState
           const TextSelection.collapsed(
         offset: 0,
       ),
-      keepStyleOnNewLine: true,
+      keepStyleOnNewLine:
+          true,
     );
   }
 
@@ -2149,8 +2122,7 @@ class _EditorScreenState
       }
 
       final savedPath =
-          await FlutterFileDialog
-              .saveFile(
+          await FlutterFileDialog.saveFile(
         params:
             SaveFileDialogParams(
           sourceFilePath:
@@ -2247,14 +2219,110 @@ class _EditorScreenState
   // ==========================================================
 
   Widget _buildToolbar() {
-    return QuillSimpleToolbar(
-      controller:
-          _controller,
+    return Material(
+      color: Theme.of(context)
+          .colorScheme
+          .surfaceContainerHighest,
 
-      config:
-          const QuillSimpleToolbarConfig(
-        multiRowsDisplay:
-            false,
+      child: QuillSimpleToolbar(
+        controller:
+            _controller,
+
+        config:
+            const QuillSimpleToolbarConfig(
+          axis:
+              Axis.horizontal,
+
+          multiRowsDisplay:
+              false,
+
+          showDividers:
+              true,
+
+          showFontFamily:
+              true,
+
+          showFontSize:
+              true,
+
+          showBoldButton:
+              true,
+
+          showItalicButton:
+              true,
+
+          showUnderLineButton:
+              true,
+
+          showStrikeThrough:
+              true,
+
+          showInlineCode:
+              true,
+
+          showColorButton:
+              true,
+
+          showBackgroundColorButton:
+              true,
+
+          showClearFormat:
+              true,
+
+          showAlignmentButtons:
+              true,
+
+          showLeftAlignment:
+              true,
+
+          showCenterAlignment:
+              true,
+
+          showRightAlignment:
+              true,
+
+          showJustifyAlignment:
+              true,
+
+          showHeaderStyle:
+              true,
+
+          showListNumbers:
+              true,
+
+          showListBullets:
+              true,
+
+          showListCheck:
+              true,
+
+          showCodeBlock:
+              true,
+
+          showQuote:
+              true,
+
+          showIndent:
+              true,
+
+          showLink:
+              true,
+
+          showUndo:
+              true,
+
+          showRedo:
+              true,
+
+          showSearchButton:
+              true,
+
+          showSubscript:
+              true,
+
+          showSuperscript:
+              true,
+        ),
       ),
     );
   }
@@ -2448,12 +2516,17 @@ class _EditorScreenState
               // TOOLBAR
               // =================================================
 
-              SingleChildScrollView(
-                scrollDirection:
-                    Axis.horizontal,
+              SizedBox(
+                height: 52,
 
                 child:
-                    _buildToolbar(),
+                    SingleChildScrollView(
+                  scrollDirection:
+                      Axis.horizontal,
+
+                  child:
+                      _buildToolbar(),
+                ),
               ),
 
               const Divider(
