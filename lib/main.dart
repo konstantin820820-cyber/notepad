@@ -1900,10 +1900,6 @@ class _HomeScreenState extends State<HomeScreen>
 // EDITOR SCREEN
 // ============================================================
 
-// ============================================================
-// EDITOR SCREEN
-// ============================================================
-
 class EditorScreen extends StatefulWidget {
   final Note? note;
 
